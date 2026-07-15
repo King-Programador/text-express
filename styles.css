@@ -2911,3 +2911,47 @@
   background-size: 28px 100%, 28px 100%;
   background-attachment: local, local;
 }
+
+
+/* ==========================================================
+   Text Express 10.0 — tópicos clicáveis e editáveis
+   ========================================================== */
+
+#text-express-app .te-category-bar:not(.te-dragging) .te-category-button,
+#text-express-app .te-category-bar:not(.te-dragging) .te-category-edit {
+  pointer-events: auto;
+}
+
+#text-express-app .te-category-edit {
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  margin-right: 3px;
+  opacity: .5;
+  cursor: pointer;
+}
+
+#text-express-app .te-category-chip:hover .te-category-edit,
+#text-express-app .te-category-chip:focus-within .te-category-edit,
+#text-express-app .te-category-edit:hover,
+#text-express-app .te-category-edit:focus-visible {
+  width: 25px;
+  opacity: 1;
+}
+
+#text-express-app .te-category-chip.te-active {
+  outline: 1px solid color-mix(in srgb, var(--te-category-color) 70%, transparent);
+  outline-offset: 1px;
+}
+
+#text-express-app .te-category-button,
+#text-express-app .te-category-edit {
+  position: relative;
+  z-index: 1;
+}
+
+#text-express-app .te-category-bar.te-dragging .te-category-button,
+#text-express-app .te-category-bar.te-dragging .te-category-edit,
+#text-express-app .te-category-bar.te-dragging .te-category-add-button {
+  pointer-events: none !important;
+}

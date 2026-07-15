@@ -1,12 +1,12 @@
 /*
- * Text Express 9.0.0
+ * Text Express 10.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "9.0.0";
+  const APP_VERSION = "10.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -3487,28 +3487,31 @@
     let startScrollLeft = 0;
     let dragging = false;
     let suppressNextClick = false;
+    const DRAG_THRESHOLD = 6;
 
-    const DRAG_THRESHOLD = 5;
+    const resetPointer = () => {
+      bar.classList.remove("te-dragging");
+      pointerId = null;
+      dragging = false;
+    };
 
     const finishDrag = (event) => {
       if (pointerId === null || event.pointerId !== pointerId) return;
 
-      try {
-        if (bar.hasPointerCapture(pointerId)) {
-          bar.releasePointerCapture(pointerId);
-        }
-      } catch {}
-
       if (dragging) {
+        try {
+          if (bar.hasPointerCapture(pointerId)) {
+            bar.releasePointerCapture(pointerId);
+          }
+        } catch {}
+
         suppressNextClick = true;
         window.setTimeout(() => {
           suppressNextClick = false;
-        }, 250);
+        }, 180);
       }
 
-      bar.classList.remove("te-dragging");
-      pointerId = null;
-      dragging = false;
+      resetPointer();
     };
 
     bar.addEventListener("pointerdown", (event) => {
@@ -3521,9 +3524,10 @@
       startScrollLeft = bar.scrollLeft;
       dragging = false;
 
-      try {
-        bar.setPointerCapture(pointerId);
-      } catch {}
+      /*
+       * A captura não ocorre no clique inicial.
+       * Assim, o botão da categoria e o lápis recebem cliques normais.
+       */
     });
 
     bar.addEventListener("pointermove", (event) => {
@@ -3535,30 +3539,32 @@
       if (!dragging) {
         const horizontalIntent =
           Math.abs(deltaX) >= DRAG_THRESHOLD &&
-          Math.abs(deltaX) >= Math.abs(deltaY);
+          Math.abs(deltaX) > Math.abs(deltaY);
 
         if (!horizontalIntent) return;
 
         dragging = true;
         bar.classList.add("te-dragging");
+
+        try {
+          bar.setPointerCapture(pointerId);
+        } catch {}
       }
 
       event.preventDefault();
       bar.scrollLeft = startScrollLeft - deltaX;
+      this.rememberCategoryScrollPosition?.();
     });
 
     bar.addEventListener("pointerup", finishDrag);
     bar.addEventListener("pointercancel", finishDrag);
 
     bar.addEventListener("lostpointercapture", (event) => {
-      if (pointerId !== null && event.pointerId === pointerId) {
-        bar.classList.remove("te-dragging");
-        pointerId = null;
-        dragging = false;
+      if (pointerId !== null && event.pointerId === pointerId && dragging) {
+        resetPointer();
       }
     });
 
-    /* Não seleciona uma categoria quando o gesto foi de arraste. */
     bar.addEventListener(
       "click",
       (event) => {
@@ -3570,7 +3576,6 @@
       true
     );
 
-    /* A roda vertical do mouse movimenta a faixa horizontalmente. */
     bar.addEventListener(
       "wheel",
       (event) => {
@@ -3582,16 +3587,19 @@
         bar.scrollLeft += event.deltaY;
 
         if (bar.scrollLeft !== before) {
+          this.rememberCategoryScrollPosition?.();
           event.preventDefault();
         }
       },
       { passive: false }
     );
 
-    /* Navegação por teclado. */
+    bar.addEventListener("scroll", () => {
+      this.rememberCategoryScrollPosition?.();
+    }, { passive: true });
+
     bar.addEventListener("keydown", (event) => {
       if (!bar.classList.contains("te-can-drag")) return;
-
       const step = Math.max(120, Math.round(bar.clientWidth * 0.28));
 
       if (event.key === "ArrowLeft") {
@@ -3612,13 +3620,17 @@
     if (typeof ResizeObserver === "function") {
       this.categoryDragResizeObserver = new ResizeObserver(() => {
         this.updateCategoryDragState();
+        this.restoreCategoryScrollPosition?.();
       });
       this.categoryDragResizeObserver.observe(bar);
     }
 
     if (typeof MutationObserver === "function") {
       this.categoryDragMutationObserver = new MutationObserver(() => {
-        window.requestAnimationFrame(() => this.updateCategoryDragState());
+        window.requestAnimationFrame(() => {
+          this.updateCategoryDragState();
+          this.restoreCategoryScrollPosition?.();
+        });
       });
       this.categoryDragMutationObserver.observe(bar, {
         childList: true,
@@ -3627,14 +3639,140 @@
       });
     }
 
-    window.addEventListener("resize", () => this.updateCategoryDragState());
-    window.requestAnimationFrame(() => this.updateCategoryDragState());
+    window.addEventListener("resize", () => {
+      this.updateCategoryDragState();
+      this.restoreCategoryScrollPosition?.();
+    });
+
+    window.requestAnimationFrame(() => {
+      this.updateCategoryDragState();
+      this.restoreCategoryScrollPosition?.();
+    });
   };
 
   TextExpressApp.prototype.init = function () {
     const result = teV9Original.init.call(this);
     this.setupCategoryDragScroll();
     return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 10.0 — tópicos de Protocolo interativos
+   * ========================================================== */
+  const teV10Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    renderCategories: TextExpressApp.prototype.renderCategories,
+    handleRootClick: TextExpressApp.prototype.handleRootClick
+  });
+
+  TextExpressApp.prototype.getCategoryScrollKey = function () {
+    return ["atendimento", "protocolo", "favoritos"].includes(this.activeType)
+      ? this.activeType
+      : "atendimento";
+  };
+
+  TextExpressApp.prototype.rememberCategoryScrollPosition = function () {
+    if (!this.categoryBar) return;
+    if (!this.categoryScrollPositions) {
+      this.categoryScrollPositions = {
+        atendimento: 0,
+        protocolo: 0,
+        favoritos: 0
+      };
+    }
+
+    this.categoryScrollPositions[this.getCategoryScrollKey()] =
+      Math.max(0, Number(this.categoryBar.scrollLeft) || 0);
+  };
+
+  TextExpressApp.prototype.restoreCategoryScrollPosition = function () {
+    if (!this.categoryBar || !this.categoryScrollPositions) return;
+
+    const desired =
+      Number(this.categoryScrollPositions[this.getCategoryScrollKey()]) || 0;
+    const maximum = Math.max(
+      0,
+      this.categoryBar.scrollWidth - this.categoryBar.clientWidth
+    );
+
+    this.categoryBar.scrollLeft = Math.min(desired, maximum);
+  };
+
+  TextExpressApp.prototype.renderCategories = function () {
+    this.rememberCategoryScrollPosition();
+    const result = teV10Original.renderCategories.call(this);
+
+    window.requestAnimationFrame(() => {
+      this.updateCategoryDragState?.();
+      this.restoreCategoryScrollPosition();
+
+      const activeButton = this.categoryBar?.querySelector(
+        ".te-category-chip.te-active .te-category-button"
+      );
+
+      if (activeButton && this.activeCategory !== "Todos") {
+        const barRect = this.categoryBar.getBoundingClientRect();
+        const buttonRect = activeButton.getBoundingClientRect();
+
+        if (buttonRect.left < barRect.left || buttonRect.right > barRect.right) {
+          activeButton.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "nearest"
+          });
+        }
+      }
+    });
+
+    return result;
+  };
+
+  TextExpressApp.prototype.handleRootClick = function (event) {
+    const editButton = event.target.closest(
+      "#te-category-bar [data-te-action='category-edit']"
+    );
+
+    if (editButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const category = this.getCategoryById(editButton.dataset.teCategoryId);
+      if (category) {
+        this.openCategoryModal(category);
+      } else {
+        this.showToast("Categoria não localizada.", "error");
+      }
+      return;
+    }
+
+    const categoryButton = event.target.closest(
+      "#te-category-bar [data-te-category]"
+    );
+
+    if (categoryButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.rememberCategoryScrollPosition();
+      this.activeCategory = categoryButton.dataset.teCategory || "Todos";
+      this.selectedId = null;
+      this.renderCategories();
+      this.renderSnippets();
+      return;
+    }
+
+    return teV10Original.handleRootClick.call(this, event);
+  };
+
+  TextExpressApp.prototype.init = function () {
+    this.categoryScrollPositions = {
+      atendimento: 0,
+      protocolo: 0,
+      favoritos: 0
+    };
+    return teV10Original.init.call(this);
   };
 
 

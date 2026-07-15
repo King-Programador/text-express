@@ -1,41 +1,25 @@
-# Text Express 9.0
+# Text Express 10.0
 
-## Faixa de categorias arrastável
+## Tópicos de Protocolo corrigidos
 
-A faixa horizontal das categorias agora pode ser movimentada diretamente:
+- Clique na categoria para filtrar os protocolos.
+- Clique no lápis para editar nome, ícone e cor.
+- O lápis permanece visível.
+- O arraste horizontal continua funcionando.
+- Clique e arraste agora são reconhecidos separadamente.
+- A posição horizontal da faixa é mantida após a seleção.
+- O tópico ativo permanece visível.
 
-- clique e segure com o botão esquerdo do mouse;
-- arraste para a esquerda ou para a direita;
-- solte no ponto desejado;
-- o arraste não abre uma categoria por acidente;
-- um clique simples continua selecionando a categoria normalmente;
-- funciona também com toque e touchpad;
-- a roda do mouse desloca a faixa quando o cursor está sobre ela;
-- setas esquerda/direita, Home e End funcionam quando a faixa está focada.
-
-O cursor muda para uma mão de arraste quando existem categorias fora da área visível.
-
-## Recursos preservados
-
-- interface legível em tela cheia;
-- nome do atendente memorizado;
-- salvamento automático;
-- sincronização entre abas do mesmo site;
-- sequências apenas em Atendimento;
-- protocolos em texto único;
-- launcher arrastável;
-- modo de tela grande;
-- categorias editáveis;
-- importação e exportação.
+A correção também se aplica às categorias de Atendimento e Favoritos.
 
 ## Atualização
 
-Substitua na raiz do repositório:
+Envie para a raiz do GitHub:
 
-- `index.html`
-- `styles.css`
-- `app.js`
-- `bookmarklet.js`
-- `README.md`
+- index.html
+- styles.css
+- app.js
+- bookmarklet.js
+- README.md
 
-Depois aguarde o GitHub Pages e pressione `Ctrl + F5`.
+Depois pressione Ctrl + F5.
