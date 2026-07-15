@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Text Express</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="te-page">
+  <main class="te-demo-page" aria-label="Página demonstrativa do Text Express">
+    <section class="te-demo-card">
+      <span class="te-demo-eyebrow">Demonstração local</span>
+      <h1>Text Express</h1>
+      <p>Use o campo abaixo para testar os atalhos. Por exemplo, digite <strong>/a-saudacao-01</strong> e pressione Espaço.</p>
+      <label for="te-demo-message">Mensagem de atendimento</label>
+      <textarea id="te-demo-message" rows="8" placeholder="Digite uma mensagem ou um atalho..."></textarea>
+      <label for="te-demo-protocol">Registro do protocolo</label>
+      <textarea id="te-demo-protocol" rows="8" placeholder="Digite um protocolo ou use o painel..."></textarea>
+    </section>
+  </main>
+
+  <div id="text-express-app" class="te-app" data-version="1.0.0">
+    <section class="te-panel" role="dialog" aria-label="Text Express" aria-modal="false">
+      <header class="te-header" data-te-drag-handle>
+        <div class="te-brand">
+          <span class="te-brand-icon" aria-hidden="true">⚡</span>
+          <div>
+            <strong>Text Express</strong>
+            <span class="te-subtitle">Atendimento e protocolos</span>
+          </div>
+        </div>
+
+        <div class="te-header-actions">
+          <span class="te-count-badge" id="te-count-badge" aria-live="polite">0 modelos</span>
+          <button class="te-icon-button" type="button" data-te-action="theme" title="Alternar tema" aria-label="Alternar tema">
+            <span class="te-theme-icon" aria-hidden="true">☾</span>
+          </button>
+          <button class="te-icon-button" type="button" data-te-action="minimize" title="Minimizar" aria-label="Minimizar">
+            <span aria-hidden="true">—</span>
+          </button>
+          <button class="te-icon-button" type="button" data-te-action="close" title="Fechar" aria-label="Fechar">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="te-expandable">
+        <nav class="te-main-tabs" aria-label="Tipos de modelo">
+          <button class="te-main-tab te-active" type="button" data-te-type="atendimento">
+            <span aria-hidden="true">💬</span> Atendimento
+          </button>
+          <button class="te-main-tab" type="button" data-te-type="protocolo">
+            <span aria-hidden="true">📄</span> Protocolo
+          </button>
+          <button class="te-main-tab" type="button" data-te-type="favoritos">
+            <span aria-hidden="true">★</span> Favoritos
+          </button>
+        </nav>
+
+        <section class="te-toolbar" aria-label="Busca e criação">
+          <label class="te-search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="te-search-input" type="search" autocomplete="off" placeholder="Buscar por nome, atalho ou conteúdo..." aria-label="Buscar modelos">
+          </label>
+          <button class="te-primary-button" type="button" data-te-action="new">
+            <span aria-hidden="true">＋</span> Novo
+          </button>
+        </section>
+
+        <nav class="te-category-bar" id="te-category-bar" aria-label="Categorias"></nav>
+
+        <section class="te-content-area">
+          <div class="te-list-pane">
+            <div class="te-list" id="te-snippet-list" aria-live="polite"></div>
+            <div class="te-empty-state te-hidden" id="te-empty-state">
+              <span aria-hidden="true">⌕</span>
+              <strong>Nenhum modelo encontrado</strong>
+              <p>Altere os filtros ou crie um novo modelo.</p>
+            </div>
+          </div>
+
+          <aside class="te-detail-pane" id="te-detail-pane" aria-label="Detalhes do modelo">
+            <div class="te-detail-empty">
+              <span aria-hidden="true">⚡</span>
+              <strong>Selecione um modelo</strong>
+              <p>Veja o conteúdo completo, as variáveis e o atalho de ativação.</p>
+            </div>
+          </aside>
+        </section>
+
+        <footer class="te-footer">
+          <div class="te-status" id="te-status-counts">Atendimento: 0 · Protocolo: 0 · Total: 0</div>
+          <div class="te-footer-actions">
+            <button class="te-secondary-button" type="button" data-te-action="settings" title="Configurações">
+              ⚙ Configurações
+            </button>
+            <button class="te-secondary-button" type="button" data-te-action="import">↥ Importar</button>
+            <button class="te-secondary-button" type="button" data-te-action="export">↧ Exportar</button>
+            <button class="te-danger-button" type="button" data-te-action="reset">↻ Restaurar padrões</button>
+          </div>
+        </footer>
+      </div>
+    </section>
+
+    <button class="te-reopen-button te-hidden" type="button" data-te-action="reopen" title="Abrir Text Express" aria-label="Abrir Text Express">
+      <span aria-hidden="true">⚡</span>
+    </button>
+
+    <input class="te-hidden" id="te-import-input" type="file" accept="application/json,.json">
+
+    <div class="te-modal-backdrop te-hidden" id="te-snippet-modal" role="presentation">
+      <section class="te-modal" role="dialog" aria-modal="true" aria-labelledby="te-modal-title">
+        <header class="te-modal-header">
+          <div>
+            <span class="te-modal-kicker" id="te-modal-kicker">Novo modelo</span>
+            <h2 id="te-modal-title">Criar modelo</h2>
+          </div>
+          <button class="te-icon-button" type="button" data-te-action="modal-close" aria-label="Fechar modal">×</button>
+        </header>
+
+        <form id="te-snippet-form" novalidate>
+          <input id="te-form-id" type="hidden">
+
+          <fieldset class="te-type-selector">
+            <legend>Tipo</legend>
+            <label>
+              <input type="radio" name="te-type" value="atendimento" checked>
+              <span>💬 Atendimento</span>
+            </label>
+            <label>
+              <input type="radio" name="te-type" value="protocolo">
+              <span>📄 Protocolo</span>
+            </label>
+          </fieldset>
+
+          <div class="te-form-grid">
+            <label class="te-field te-field-wide">
+              <span>Nome do modelo</span>
+              <input id="te-form-name" type="text" maxlength="100" required placeholder="Ex.: Solicitar reinício dos equipamentos">
+              <small class="te-field-error" data-te-error="name"></small>
+            </label>
+
+            <label class="te-field te-field-wide">
+              <span>Atalho de ativação</span>
+              <div class="te-input-with-action">
+                <input id="te-form-shortcut" type="text" maxlength="60" required spellcheck="false" placeholder="/reiniciar">
+                <button type="button" class="te-inline-button" data-te-action="suggest-shortcut">Sugerir</button>
+              </div>
+              <small>Você escolhe o comando. Ele sempre começará com “/”.</small>
+              <small class="te-field-error" data-te-error="shortcut"></small>
+            </label>
+
+            <label class="te-field">
+              <span>Expandir ao pressionar</span>
+              <select id="te-form-trigger">
+                <option value="space">Espaço</option>
+                <option value="tab">Tab</option>
+                <option value="enter">Enter</option>
+              </select>
+            </label>
+
+            <label class="te-field">
+              <span>Categoria</span>
+              <select id="te-form-category"></select>
+            </label>
+
+            <label class="te-field te-field-wide">
+              <span>Conteúdo do modelo</span>
+              <textarea id="te-form-content" rows="9" required placeholder="Digite o texto que será inserido..."></textarea>
+              <small class="te-field-error" data-te-error="content"></small>
+            </label>
+
+            <div class="te-field te-field-wide">
+              <span>Variáveis detectadas</span>
+              <div class="te-variable-tags" id="te-variable-preview">
+                <span class="te-muted">Nenhuma variável encontrada.</span>
+              </div>
+              <small>Use o formato <code>[nome]</code>, <code>[prazo]</code> ou qualquer outro campo entre colchetes.</small>
+            </div>
+
+            <label class="te-check-field te-field-wide">
+              <input id="te-form-favorite" type="checkbox">
+              <span>Adicionar aos favoritos</span>
+            </label>
+          </div>
+
+          <footer class="te-modal-footer">
+            <button class="te-secondary-button" type="button" data-te-action="modal-close">Cancelar</button>
+            <button class="te-primary-button" type="submit">Salvar modelo</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
+    <div class="te-modal-backdrop te-hidden" id="te-variable-modal" role="presentation">
+      <section class="te-modal te-variable-modal" role="dialog" aria-modal="true" aria-labelledby="te-variable-title">
+        <header class="te-modal-header">
+          <div>
+            <span class="te-modal-kicker">Preencher modelo</span>
+            <h2 id="te-variable-title">Informe as variáveis</h2>
+          </div>
+          <button class="te-icon-button" type="button" data-te-action="variable-cancel" aria-label="Cancelar preenchimento">×</button>
+        </header>
+        <form id="te-variable-form">
+          <p class="te-variable-help">Os valores abaixo serão substituídos no texto antes da inserção.</p>
+          <div class="te-variable-fields" id="te-variable-fields"></div>
+          <footer class="te-modal-footer">
+            <button class="te-secondary-button" type="button" data-te-action="variable-cancel">Cancelar</button>
+            <button class="te-primary-button" type="submit">Aplicar e inserir</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
+    <div class="te-modal-backdrop te-hidden" id="te-settings-modal" role="presentation">
+      <section class="te-modal te-settings-modal" role="dialog" aria-modal="true" aria-labelledby="te-settings-title">
+        <header class="te-modal-header">
+          <div>
+            <span class="te-modal-kicker">Preferências</span>
+            <h2 id="te-settings-title">Configurações</h2>
+          </div>
+          <button class="te-icon-button" type="button" data-te-action="settings-close" aria-label="Fechar configurações">×</button>
+        </header>
+        <form id="te-settings-form">
+          <div class="te-settings-list">
+            <label class="te-setting-row">
+              <span>
+                <strong>Expansão automática</strong>
+                <small>Substituir atalhos digitados nos campos de texto.</small>
+              </span>
+              <input id="te-setting-auto-expand" type="checkbox" checked>
+            </label>
+            <label class="te-setting-row">
+              <span>
+                <strong>Manter painel aberto após inserir</strong>
+                <small>Útil para inserir vários textos durante o mesmo atendimento.</small>
+              </span>
+              <input id="te-setting-keep-open" type="checkbox" checked>
+            </label>
+            <label class="te-setting-row">
+              <span>
+                <strong>Confirmar antes de excluir</strong>
+                <small>Evita remoções acidentais.</small>
+              </span>
+              <input id="te-setting-confirm-delete" type="checkbox" checked>
+            </label>
+          </div>
+          <div class="te-keyboard-help">
+            <strong>Atalho global</strong>
+            <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> abre ou reabre o painel.</span>
+          </div>
+          <footer class="te-modal-footer">
+            <button class="te-primary-button" type="submit">Salvar configurações</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
+    <div class="te-toast-stack" id="te-toast-stack" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
