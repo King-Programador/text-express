@@ -20,7 +20,7 @@
     </section>
   </main>
 
-  <div id="text-express-app" class="te-app" data-version="3.0.0">
+  <div id="text-express-app" class="te-app" data-version="5.0.0">
     <svg class="te-icon-sprite" aria-hidden="true" focusable="false">
       <symbol id="te-i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></symbol>
       <symbol id="te-i-message-circle" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.6-4.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
@@ -159,7 +159,7 @@
       </div>
     </section>
 
-    <button class="te-reopen-button" type="button" data-te-action="reopen" title="Abrir Text Express" aria-label="Abrir Text Express"><span class="te-launcher-label">Abrir Text Express</span>
+    <button class="te-reopen-button" type="button" data-te-action="reopen" title="Clique para abrir ou arraste para mover" aria-label="Abrir ou mover o Text Express"><span class="te-launcher-label">Abrir Text Express</span>
       <svg class="te-icon " aria-hidden="true"><use href="#te-i-zap"></use></svg>
     </button>
 
@@ -187,6 +187,18 @@
             <label>
               <input type="radio" name="te-type" value="protocolo">
               <span><svg class="te-icon " aria-hidden="true"><use href="#te-i-file-text"></use></svg> Protocolo</span>
+            </label>
+          </fieldset>
+
+          <fieldset class="te-model-kind-selector te-hidden" id="te-model-kind-selector">
+            <legend>Formato do atendimento</legend>
+            <label>
+              <input type="radio" name="te-model-kind" value="unico" checked>
+              <span><svg class="te-icon" aria-hidden="true"><use href="#te-i-message-circle"></use></svg> Fala única</span>
+            </label>
+            <label>
+              <input type="radio" name="te-model-kind" value="fluxo">
+              <span><svg class="te-icon" aria-hidden="true"><use href="#te-i-clipboard-list"></use></svg> Sequência de falas</span>
             </label>
           </fieldset>
 
@@ -224,11 +236,27 @@
               </div>
             </div>
 
-            <label class="te-field te-field-wide">
-              <span>Conteúdo do modelo</span>
-              <textarea id="te-form-content" rows="9" required placeholder="Digite o texto que será inserido..."></textarea>
+            <div class="te-field te-field-wide" id="te-single-content-wrap">
+              <label>
+                <span>Conteúdo do modelo</span>
+                <textarea id="te-form-content" rows="7" placeholder="Digite o texto que será inserido..."></textarea>
+              </label>
               <small class="te-field-error" data-te-error="content"></small>
-            </label>
+            </div>
+
+            <section class="te-flow-editor te-field-wide te-hidden" id="te-flow-editor" aria-label="Editor da sequência de falas">
+              <div class="te-flow-editor-heading">
+                <div>
+                  <strong>Falas da sequência</strong>
+                  <small>O atalho principal abre a sequência. Os atalhos numerados inserem uma fala diretamente.</small>
+                </div>
+                <button class="te-secondary-button te-compact-button" type="button" data-te-action="flow-step-add">
+                  <svg class="te-icon" aria-hidden="true"><use href="#te-i-plus"></use></svg> Adicionar fala
+                </button>
+              </div>
+              <div class="te-flow-editor-steps" id="te-flow-editor-steps"></div>
+              <small class="te-field-error" id="te-flow-error"></small>
+            </section>
 
             <div class="te-field te-field-wide">
               <span>Variáveis detectadas</span>

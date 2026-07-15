@@ -1481,3 +1481,781 @@
     display: none;
   }
 }
+
+/* ===== Text Express 4.0 — launcher menor e arrastável ===== */
+
+#text-express-app .te-reopen-button {
+  right: 14px;
+  bottom: 14px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 12px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: left, top, transform;
+}
+
+#text-express-app .te-reopen-button .te-icon {
+  width: 20px;
+  height: 20px;
+}
+
+#text-express-app .te-reopen-button.te-dragging {
+  cursor: grabbing;
+  transition: none !important;
+  transform: scale(1.03);
+  box-shadow:
+    0 16px 34px rgba(37, 99, 235, 0.42),
+    0 4px 12px rgba(15, 23, 42, 0.28);
+}
+
+#text-express-app .te-reopen-button.te-custom-position {
+  right: auto !important;
+  bottom: auto !important;
+}
+
+#text-express-app .te-reopen-button:hover:not(.te-dragging) {
+  transform: translateY(-1px) scale(1.03);
+}
+
+#text-express-app .te-launcher-label {
+  display: none;
+}
+
+@media (max-width: 540px) {
+  #text-express-app .te-reopen-button {
+    right: 10px;
+    bottom: 10px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 11px;
+  }
+
+  #text-express-app .te-reopen-button .te-icon {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+/* ==========================================================
+   Text Express 5.0 — interface leve e fluxos de atendimento
+   ========================================================== */
+
+#text-express-app {
+  --te-shadow: 0 18px 48px rgba(15, 23, 42, .24);
+  --te-radius: 15px;
+}
+
+.te-dark #text-express-app,
+#text-express-app.te-dark {
+  --te-surface: #172033;
+  --te-surface-2: #111827;
+  --te-surface-3: #202b40;
+  --te-border: #2b3850;
+  --te-header: #0e1b30;
+  --te-muted: #9eabc0;
+}
+
+#text-express-app .te-panel {
+  width: min(820px, calc(100vw - 24px));
+  height: min(640px, calc(100vh - 24px));
+  border-radius: 15px;
+  box-shadow: var(--te-shadow);
+}
+
+#text-express-app .te-header {
+  min-height: 48px;
+  padding: 0 10px 0 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--te-border) 70%, transparent);
+  background: var(--te-header);
+}
+
+#text-express-app .te-brand-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+#text-express-app .te-brand strong {
+  font-size: 14px;
+}
+
+#text-express-app .te-count-badge {
+  min-height: 21px;
+  padding: 2px 7px;
+  font-size: 9px;
+  background: rgba(255,255,255,.08);
+}
+
+#text-express-app .te-header .te-icon-button {
+  width: 29px;
+  height: 29px;
+}
+
+#text-express-app .te-main-tabs {
+  min-height: 45px;
+  padding: 6px 10px;
+  gap: 5px;
+  border-bottom: 1px solid var(--te-border);
+  background: var(--te-surface);
+}
+
+#text-express-app .te-main-tab {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--te-muted);
+  font-size: 12px;
+}
+
+#text-express-app .te-main-tab.te-active {
+  background: var(--te-primary-soft);
+  color: var(--te-primary);
+  box-shadow: none;
+}
+
+#text-express-app .te-toolbar {
+  min-height: 48px;
+  padding: 7px 10px;
+  gap: 8px;
+  background: var(--te-surface);
+}
+
+#text-express-app .te-search-box {
+  min-height: 34px;
+  border-radius: 9px;
+  background: var(--te-surface-2);
+  border-color: transparent;
+}
+
+#text-express-app .te-primary-button,
+#text-express-app .te-secondary-button,
+#text-express-app .te-danger-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+#text-express-app .te-category-bar {
+  min-height: 38px;
+  padding: 3px 10px 6px;
+  gap: 5px;
+  background: var(--te-surface);
+  scrollbar-width: none;
+}
+
+#text-express-app .te-category-bar::-webkit-scrollbar {
+  display: none;
+}
+
+#text-express-app .te-category-chip,
+#text-express-app .te-category-new-button {
+  min-height: 27px;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+#text-express-app .te-category-button {
+  min-height: 27px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+#text-express-app .te-category-count {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  font-size: 8px;
+}
+
+#text-express-app .te-content-area {
+  grid-template-columns: minmax(260px, 38%) minmax(0, 1fr);
+  min-height: 0;
+  background: var(--te-surface);
+}
+
+#text-express-app .te-list-pane {
+  padding: 8px;
+  border-right: 1px solid var(--te-border);
+  background: var(--te-surface-2);
+}
+
+#text-express-app .te-list {
+  gap: 5px;
+}
+
+#text-express-app .te-snippet-card {
+  min-height: 0;
+  padding: 9px;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-left: 2px solid color-mix(in srgb, var(--te-card-accent) 55%, transparent);
+  border-radius: 10px;
+  background: var(--te-surface);
+  box-shadow: none;
+  transform: none;
+}
+
+#text-express-app .te-snippet-card:hover {
+  border-color: color-mix(in srgb, var(--te-border) 85%, transparent);
+  box-shadow: none;
+  transform: none;
+}
+
+#text-express-app .te-snippet-card.te-selected {
+  border-color: color-mix(in srgb, var(--te-primary) 42%, var(--te-border));
+  background: color-mix(in srgb, var(--te-primary) 6%, var(--te-surface));
+  box-shadow: none;
+}
+
+#text-express-app .te-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+#text-express-app .te-card-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#text-express-app .te-card-excerpt {
+  max-height: 36px;
+  margin: 4px 0 5px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+}
+
+#text-express-app .te-shortcut-line {
+  margin-top: 2px;
+  gap: 6px;
+  font-size: 9px;
+}
+
+#text-express-app .te-shortcut-line code,
+#text-express-app .te-flow-shortcuts code {
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--te-surface-3);
+  color: var(--te-primary);
+  font-size: 9px;
+}
+
+#text-express-app .te-card-actions {
+  min-height: 25px;
+  margin-top: 2px;
+  gap: 4px;
+}
+
+#text-express-app .te-text-button {
+  min-height: 25px;
+  padding: 3px 7px;
+  font-size: 9.5px;
+}
+
+#text-express-app .te-icon-action {
+  display: inline-grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--te-muted);
+}
+
+#text-express-app .te-icon-action:hover {
+  background: var(--te-surface-3);
+  color: var(--te-text);
+}
+
+#text-express-app .te-icon-action.te-delete:hover {
+  color: var(--te-danger);
+  background: var(--te-danger-soft);
+}
+
+#text-express-app .te-icon-action .te-icon {
+  width: 13px;
+  height: 13px;
+}
+
+#text-express-app .te-favorite-button {
+  width: 27px;
+  height: 27px;
+}
+
+#text-express-app .te-detail-pane {
+  padding: 14px 16px;
+  background: var(--te-surface);
+}
+
+#text-express-app .te-detail-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--te-border);
+}
+
+#text-express-app .te-detail-title-wrap h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+#text-express-app .te-detail-category-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+#text-express-app .te-detail-meta {
+  margin-top: 4px;
+  gap: 6px;
+  font-size: 9.5px;
+}
+
+#text-express-app .te-detail-section {
+  margin-top: 11px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+#text-express-app .te-content-preview {
+  min-height: 90px;
+  max-height: 250px;
+  padding: 12px;
+  border: 1px solid var(--te-border);
+  border-radius: 10px;
+  background: var(--te-surface-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+#text-express-app .te-inline-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#text-express-app .te-detail-actions-light {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--te-border);
+}
+
+#text-express-app .te-footer {
+  min-height: 45px;
+  padding: 6px 10px;
+  background: var(--te-surface);
+  border-top: 1px solid var(--te-border);
+}
+
+#text-express-app .te-status {
+  font-size: 9px;
+}
+
+#text-express-app .te-footer-actions {
+  gap: 4px;
+}
+
+#text-express-app .te-footer-actions button {
+  min-height: 29px;
+  padding: 4px 7px;
+  font-size: 9px;
+}
+
+/* Fluxos na lista */
+#text-express-app .te-flow-card {
+  border-left-color: var(--te-primary);
+}
+
+#text-express-app .te-flow-count {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--te-primary-soft);
+  color: var(--te-primary);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+#text-express-app .te-flow-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 4px 0;
+}
+
+/* Visualização da sequência */
+#text-express-app .te-flow-detail-header {
+  align-items: flex-start;
+}
+
+#text-express-app .te-flow-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+#text-express-app .te-flow-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+#text-express-app .te-flow-section-title strong {
+  font-size: 11px;
+}
+
+#text-express-app .te-flow-section-title small {
+  color: var(--te-muted);
+  font-size: 9px;
+}
+
+#text-express-app .te-flow-variable-section {
+  margin-top: 11px;
+  padding: 10px;
+  border: 1px solid var(--te-border);
+  border-radius: 10px;
+  background: var(--te-surface-2);
+}
+
+#text-express-app .te-flow-variable-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#text-express-app .te-flow-variable-grid label {
+  display: grid;
+  gap: 3px;
+}
+
+#text-express-app .te-flow-variable-grid span {
+  font-size: 9px;
+  color: var(--te-muted);
+}
+
+#text-express-app .te-flow-variable-grid input {
+  min-height: 31px;
+  padding: 6px 8px;
+  border: 1px solid var(--te-border);
+  border-radius: 7px;
+  background: var(--te-surface);
+  color: var(--te-text);
+}
+
+#text-express-app .te-flow-steps-view {
+  margin-top: 12px;
+}
+
+#text-express-app .te-flow-step {
+  margin-bottom: 5px;
+  overflow: hidden;
+  border: 1px solid var(--te-border);
+  border-radius: 9px;
+  background: var(--te-surface);
+}
+
+#text-express-app .te-flow-step.te-active {
+  border-color: color-mix(in srgb, var(--te-primary) 48%, var(--te-border));
+}
+
+#text-express-app .te-flow-step.te-used {
+  border-left: 3px solid var(--te-success);
+}
+
+#text-express-app .te-flow-step-summary {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--te-text);
+  text-align: left;
+}
+
+#text-express-app .te-flow-step-summary:hover {
+  background: var(--te-surface-2);
+}
+
+#text-express-app .te-flow-step-number {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  background: var(--te-surface-3);
+  color: var(--te-primary);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+#text-express-app .te-flow-step-number .te-icon {
+  width: 12px;
+  height: 12px;
+}
+
+#text-express-app .te-flow-step-name {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#text-express-app .te-flow-step-summary code {
+  font-size: 8.5px;
+  color: var(--te-primary);
+}
+
+#text-express-app .te-optional-badge {
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--te-surface-3);
+  color: var(--te-muted);
+  font-size: 8px;
+}
+
+#text-express-app .te-flow-step-body {
+  padding: 0 9px 9px 39px;
+}
+
+#text-express-app .te-flow-step-body p {
+  margin: 0 0 8px;
+  color: var(--te-text);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+#text-express-app .te-flow-step-actions {
+  display: flex;
+  gap: 5px;
+}
+
+/* Seletor e editor de sequência no modal */
+#text-express-app .te-model-kind-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 0 20px 10px;
+  padding: 0;
+  border: 0;
+}
+
+#text-express-app .te-model-kind-selector legend {
+  grid-column: 1 / -1;
+  margin-bottom: 3px;
+  color: var(--te-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#text-express-app .te-model-kind-selector label {
+  position: relative;
+}
+
+#text-express-app .te-model-kind-selector input {
+  position: absolute;
+  opacity: 0;
+}
+
+#text-express-app .te-model-kind-selector span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--te-border);
+  border-radius: 8px;
+  background: var(--te-surface);
+  color: var(--te-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#text-express-app .te-model-kind-selector input:checked + span {
+  border-color: var(--te-primary);
+  background: var(--te-primary-soft);
+  color: var(--te-primary);
+}
+
+#text-express-app .te-flow-editor {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--te-border);
+  border-radius: 10px;
+  background: var(--te-surface-2);
+}
+
+#text-express-app .te-flow-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#text-express-app .te-flow-editor-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+#text-express-app .te-flow-editor-heading strong {
+  font-size: 11px;
+}
+
+#text-express-app .te-flow-editor-heading small {
+  color: var(--te-muted);
+  font-size: 9px;
+}
+
+#text-express-app .te-compact-button {
+  flex: none;
+}
+
+#text-express-app .te-flow-editor-steps {
+  display: grid;
+  gap: 7px;
+}
+
+#text-express-app .te-flow-step-editor {
+  padding: 9px;
+  border: 1px solid var(--te-border);
+  border-radius: 9px;
+  background: var(--te-surface);
+}
+
+#text-express-app .te-flow-step-editor > header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+#text-express-app .te-flow-step-editor-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--te-primary-soft);
+  color: var(--te-primary);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+#text-express-app .te-flow-step-editor > header strong {
+  flex: 1;
+  font-size: 10px;
+}
+
+#text-express-app .te-flow-editor-actions {
+  display: flex;
+  gap: 2px;
+}
+
+#text-express-app .te-flow-editor-actions button:disabled {
+  opacity: .3;
+  pointer-events: none;
+}
+
+#text-express-app .te-flow-step-editor-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr .7fr;
+  gap: 7px;
+}
+
+#text-express-app .te-flow-step-editor-grid label {
+  display: grid;
+  gap: 3px;
+}
+
+#text-express-app .te-flow-step-editor-grid label > span {
+  color: var(--te-muted);
+  font-size: 9px;
+}
+
+#text-express-app .te-flow-step-editor-grid input,
+#text-express-app .te-flow-step-editor-grid select,
+#text-express-app .te-flow-step-editor-grid textarea {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--te-border);
+  border-radius: 7px;
+  background: var(--te-surface-2);
+  color: var(--te-text);
+  font-size: 10px;
+}
+
+#text-express-app .te-flow-step-content-field {
+  grid-column: 1 / -1;
+}
+
+#text-express-app .te-flow-step-content-field textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+#text-express-app .te-flow-optional-check {
+  display: flex !important;
+  align-items: center;
+  align-self: end;
+  min-height: 32px;
+}
+
+#text-express-app .te-flow-optional-check input {
+  width: auto;
+}
+
+/* Modal um pouco mais largo apenas quando necessário */
+#text-express-app #te-snippet-modal .te-modal {
+  width: min(720px, calc(100vw - 24px));
+  max-height: min(720px, calc(100vh - 24px));
+}
+
+#text-express-app #te-snippet-form {
+  overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+  #text-express-app .te-panel {
+    width: calc(100vw - 12px);
+    height: calc(100vh - 12px);
+  }
+
+  #text-express-app .te-content-area {
+    grid-template-columns: 1fr;
+  }
+
+  #text-express-app .te-detail-pane {
+    display: none;
+  }
+
+  #text-express-app .te-flow-step-editor-grid,
+  #text-express-app .te-flow-variable-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #text-express-app .te-model-kind-selector {
+    grid-template-columns: 1fr;
+  }
+}

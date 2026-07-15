@@ -1,59 +1,66 @@
-# Text Express 3.0
+# Text Express 5.0
 
-Ferramenta local para **scripts de atendimento** e **registros de protocolo**, com atalhos personalizados, categorias editáveis e interface flutuante.
+Ferramenta local de scripts para atendimento e registros internos de protocolo.
 
-## Principal alteração desta versão
+## Novidade principal: sequências de falas
 
-O Text Express agora inicia apenas como um **ícone flutuante compacto de 44 px**, no canto inferior direito.
+As sequências existem **somente na aba Atendimento**.
 
-- clique no ícone de raio para abrir o painel;
-- clique em minimizar ou fechar para voltar ao ícone;
-- o cabeçalho do painel aberto também ficou menor;
-- o ícone possui tooltip ao passar o mouse;
-- o atalho global `Ctrl + Shift + S` continua abrindo o painel.
+Ao criar um atendimento, escolha:
 
-Essa alteração evita que uma faixa grande fique sobre o sistema de atendimento.
+- **Fala única**: um texto independente;
+- **Sequência de falas**: várias mensagens ligadas ao mesmo assunto.
+
+Os protocolos continuam sendo textos únicos e completos.
+
+### Exemplo incluído
+
+**Roteador sem gerência**
+
+- `/semgerencia` abre a sequência;
+- `/semgerencia1` insere a explicação do problema;
+- `/semgerencia2` informa que serão realizadas atualizações;
+- `/semgerencia3` solicita o reinício dos equipamentos.
+
+Dentro da sequência também existem os botões:
+
+- **Inserir**;
+- **Inserir e avançar**;
+- reiniciar sequência;
+- marcar falas opcionais;
+- preencher variáveis compartilhadas uma única vez.
+
+## Interface mais leve
+
+- painel reduzido;
+- menos bordas e cores fortes;
+- cards compactos;
+- categorias menores;
+- detalhes simplificados;
+- rodapé e botões discretos;
+- launcher pequeno e arrastável preservado.
 
 ## Recursos mantidos
 
-- 211 scripts de atendimento e 105 protocolos;
-- separação entre Atendimento, Protocolo e Favoritos;
-- atalhos definidos pelo usuário;
-- ativação por Espaço, Tab ou Enter;
-- criação, edição e exclusão de modelos;
-- categorias com ícone, cor, contador e edição;
-- botão **+ Categoria** na faixa de filtros;
-- variáveis em formato `[nome]`;
-- inserção no campo ativo ou cópia para a área de transferência;
-- importação, exportação e restauração;
+- scripts e protocolos existentes;
+- atalhos personalizados;
+- busca, categorias e favoritos;
+- variáveis `[nome]`, `[prazo]` etc.;
+- importar, exportar e restaurar;
 - modo claro e escuro;
-- dados salvos localmente no navegador.
+- armazenamento local;
+- inserção no campo ativo ou cópia.
 
-## Arquivos para o GitHub
+## Atualização no GitHub
 
 Substitua na raiz do repositório:
 
-1. `index.html`
-2. `styles.css`
-3. `app.js`
-4. `bookmarklet.js`
-5. `README.md`
+- `index.html`
+- `styles.css`
+- `app.js`
+- `bookmarklet.js`
+- `README.md`
 
-Depois aguarde o GitHub Pages publicar e pressione `Ctrl + F5`.
+Depois aguarde o GitHub Pages e pressione `Ctrl + F5`.
 
-## Uso
-
-1. Abra `https://mateus-progam.github.io/text-express/`.
-2. Clique no pequeno ícone de raio no canto inferior direito.
-3. Para usar dentro de outro sistema, recrie o favorito com o conteúdo atualizado de `bookmarklet.js`.
-4. Clique em um campo do atendimento ou protocolo.
-5. Abra o Text Express, escolha o modelo e clique em **Inserir**.
-
-## Armazenamento
-
-- modelos: `text_express_snippets`
-- categorias: `text_express_categories`
-- configurações: `text_express_settings`
-- tema: `te_dark_mode`
-
-Tudo permanece no navegador. Nenhum valor preenchido nas variáveis é enviado ao GitHub.
+A versão migra automaticamente as três falas antigas de “Sem Gerência TP-Link” para uma única sequência, preservando os demais modelos.
