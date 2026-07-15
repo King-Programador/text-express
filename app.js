@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const APP_VERSION = "2.0.0";
+  const APP_VERSION = "3.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -95,6 +95,7 @@
       this.setupEvents();
       this.rebuildShortcutMap();
       this.render();
+      this.collapseToLauncher();
 
       if (!this.storageAvailable) {
         this.showToast("O armazenamento local está bloqueado nesta página. As alterações valerão apenas nesta sessão.", "error", 6000);
@@ -1369,30 +1370,42 @@
       this.showToast("Configurações salvas.", "success");
     }
 
-    toggleMinimize(forceMinimize = null) {
-      const next = forceMinimize === null ? !this.panel.classList.contains("te-minimized") : Boolean(forceMinimize);
-      this.panel.classList.toggle("te-minimized", next);
-      const use = this.root.querySelector('[data-te-action="minimize"] use');
-      if (use) use.setAttribute("href", next ? "#te-i-maximize-2" : "#te-i-minus");
-      this.constrainPanel();
-    }
-
-    closeApp() {
+    collapseToLauncher() {
+      this.panel.classList.remove("te-minimized");
       this.panel.classList.add("te-hidden");
       this.reopenButton.classList.remove("te-hidden");
       this.isClosed = true;
+      const use = this.root.querySelector('[data-te-action="minimize"] use');
+      if (use) use.setAttribute("href", "#te-i-minus");
+    }
+
+    toggleMinimize(forceMinimize = null) {
+      if (forceMinimize === false) {
+        this.openApp();
+        return;
+      }
+      this.collapseToLauncher();
+    }
+
+    closeApp() {
+      this.collapseToLauncher();
     }
 
     openApp() {
-      this.panel.classList.remove("te-hidden");
+      this.panel.classList.remove("te-minimized", "te-hidden");
       this.reopenButton.classList.add("te-hidden");
       this.isClosed = false;
+      const use = this.root.querySelector('[data-te-action="minimize"] use');
+      if (use) use.setAttribute("href", "#te-i-minus");
       this.constrainPanel();
+      window.requestAnimationFrame(() => {
+        this.searchInput?.focus({ preventScroll: true });
+      });
     }
 
     toggleApp() {
       if (this.panel.classList.contains("te-hidden")) this.openApp();
-      else this.closeApp();
+      else this.collapseToLauncher();
     }
 
     onDragStart(event) {

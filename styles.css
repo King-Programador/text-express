@@ -1341,3 +1341,143 @@
 #text-express-app .te-detail-pane[data-te-snippet-type="protocolo"] .te-category-tag { color:var(--te-category-color); background:color-mix(in srgb,var(--te-category-color) 11%,var(--te-surface)); }
 #text-express-app .te-inline-button .te-icon { width:13px; height:13px; }
 #text-express-app .te-modal-footer .te-icon { width:15px; height:15px; }
+
+/* ===== Text Express 3.0 — launcher compacto ===== */
+
+/* O estado minimizado antigo deixa de exibir uma faixa horizontal. */
+#text-express-app .te-panel.te-minimized {
+  display: none !important;
+}
+
+/* Launcher pequeno, discreto e sempre acima do sistema aberto. */
+#text-express-app .te-reopen-button {
+  right: 16px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #1d4ed8, #6d28d9);
+  box-shadow:
+    0 10px 24px rgba(37, 99, 235, 0.3),
+    0 2px 6px rgba(15, 23, 42, 0.22);
+  font-size: 21px;
+  isolation: isolate;
+}
+
+#text-express-app .te-reopen-button .te-icon {
+  width: 23px;
+  height: 23px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+}
+
+#text-express-app .te-reopen-button:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 14px 30px rgba(37, 99, 235, 0.38),
+    0 3px 8px rgba(15, 23, 42, 0.24);
+}
+
+#text-express-app .te-reopen-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+#text-express-app .te-reopen-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, #60a5fa 55%, transparent);
+  outline-offset: 3px;
+}
+
+/* Tooltip só aparece quando o usuário passa o mouse. */
+#text-express-app .te-launcher-label {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  z-index: -1;
+  width: max-content;
+  max-width: 180px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--te-border) 78%, transparent);
+  border-radius: 9px;
+  background: var(--te-surface);
+  color: var(--te-text);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(8px, -50%);
+  transition: opacity 140ms ease, transform 140ms ease;
+  white-space: nowrap;
+}
+
+#text-express-app .te-reopen-button:hover .te-launcher-label,
+#text-express-app .te-reopen-button:focus-visible .te-launcher-label {
+  z-index: 1;
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* Cabeçalho do painel aberto mais compacto. */
+#text-express-app .te-header {
+  min-height: 54px;
+  padding: 0 11px 0 14px;
+  gap: 10px;
+}
+
+#text-express-app .te-brand {
+  gap: 8px;
+}
+
+#text-express-app .te-brand-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  font-size: 19px;
+}
+
+#text-express-app .te-brand strong {
+  font-size: 16px;
+}
+
+#text-express-app .te-subtitle {
+  display: none;
+}
+
+#text-express-app .te-count-badge {
+  min-height: 24px;
+  padding: 3px 8px;
+  margin-right: 1px;
+  font-size: 10px;
+}
+
+#text-express-app .te-header-actions {
+  gap: 3px;
+}
+
+#text-express-app .te-header .te-icon-button {
+  width: 33px;
+  height: 33px;
+}
+
+/* Em telas pequenas o launcher permanece discreto. */
+@media (max-width: 540px) {
+  #text-express-app .te-reopen-button {
+    right: 12px;
+    bottom: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  #text-express-app .te-launcher-label {
+    display: none;
+  }
+
+  #text-express-app .te-count-badge {
+    display: none;
+  }
+}

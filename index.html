@@ -20,7 +20,7 @@
     </section>
   </main>
 
-  <div id="text-express-app" class="te-app" data-version="2.0.0">
+  <div id="text-express-app" class="te-app" data-version="3.0.0">
     <svg class="te-icon-sprite" aria-hidden="true" focusable="false">
       <symbol id="te-i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></symbol>
       <symbol id="te-i-message-circle" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.6-4.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></symbol>
@@ -77,7 +77,7 @@
       <symbol id="te-i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
       <symbol id="te-i-more-horizontal" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
     </svg>
-    <section class="te-panel" role="dialog" aria-label="Text Express" aria-modal="false">
+    <section class="te-panel te-hidden" role="dialog" aria-label="Text Express" aria-modal="false">
       <header class="te-header" data-te-drag-handle>
         <div class="te-brand">
           <span class="te-brand-icon" aria-hidden="true"><svg class="te-icon " aria-hidden="true"><use href="#te-i-zap"></use></svg></span>
@@ -92,10 +92,10 @@
           <button class="te-icon-button" type="button" data-te-action="theme" title="Alternar tema" aria-label="Alternar tema">
             <span class="te-theme-icon" aria-hidden="true"><svg class="te-icon " aria-hidden="true"><use href="#te-i-moon"></use></svg></span>
           </button>
-          <button class="te-icon-button" type="button" data-te-action="minimize" title="Minimizar" aria-label="Minimizar">
+          <button class="te-icon-button" type="button" data-te-action="minimize" title="Recolher para o ícone" aria-label="Recolher para o ícone">
             <svg class="te-icon " aria-hidden="true"><use href="#te-i-minus"></use></svg>
           </button>
-          <button class="te-icon-button" type="button" data-te-action="close" title="Fechar" aria-label="Fechar">
+          <button class="te-icon-button" type="button" data-te-action="close" title="Fechar painel e manter o ícone" aria-label="Fechar painel e manter o ícone">
             <svg class="te-icon " aria-hidden="true"><use href="#te-i-x"></use></svg>
           </button>
         </div>
@@ -159,7 +159,7 @@
       </div>
     </section>
 
-    <button class="te-reopen-button te-hidden" type="button" data-te-action="reopen" title="Abrir Text Express" aria-label="Abrir Text Express">
+    <button class="te-reopen-button" type="button" data-te-action="reopen" title="Abrir Text Express" aria-label="Abrir Text Express"><span class="te-launcher-label">Abrir Text Express</span>
       <svg class="te-icon " aria-hidden="true"><use href="#te-i-zap"></use></svg>
     </button>
 
