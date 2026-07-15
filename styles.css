@@ -2858,3 +2858,56 @@
     padding-right: 12px;
   }
 }
+
+/* ==========================================================
+   Text Express 9.0 — categorias arrastáveis horizontalmente
+   ========================================================== */
+
+#text-express-app .te-category-bar {
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+#text-express-app .te-category-bar.te-can-drag {
+  cursor: grab;
+}
+
+#text-express-app .te-category-bar.te-can-drag:active,
+#text-express-app .te-category-bar.te-dragging {
+  cursor: grabbing;
+}
+
+#text-express-app .te-category-bar.te-dragging {
+  scroll-behavior: auto;
+}
+
+#text-express-app .te-category-bar.te-dragging,
+#text-express-app .te-category-bar.te-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+#text-express-app .te-category-bar.te-dragging .te-category-chip,
+#text-express-app .te-category-bar.te-dragging .te-category-add-button {
+  pointer-events: none;
+}
+
+#text-express-app .te-category-bar:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--te-primary) 70%, transparent);
+  outline-offset: -2px;
+}
+
+/* Sombra discreta nas bordas para indicar conteúdo lateral. */
+#text-express-app .te-category-bar.te-can-drag {
+  background-image:
+    linear-gradient(to right, var(--te-surface), transparent 22px),
+    linear-gradient(to left, var(--te-surface), transparent 22px);
+  background-position: left center, right center;
+  background-repeat: no-repeat;
+  background-size: 28px 100%, 28px 100%;
+  background-attachment: local, local;
+}

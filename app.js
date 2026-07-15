@@ -1,12 +1,12 @@
 /*
- * Text Express 8.0.0
+ * Text Express 9.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "8.0.0";
+  const APP_VERSION = "9.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -3451,6 +3451,189 @@
   TextExpressApp.prototype.exitFullscreen = function () {
     const result = teV8Original.exitFullscreen.call(this);
     this.root.classList.remove("te-fullscreen-active");
+    return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 9.0 — faixa de categorias arrastável
+   * ========================================================== */
+  const teV9Original = Object.freeze({
+    init: TextExpressApp.prototype.init
+  });
+
+  TextExpressApp.prototype.updateCategoryDragState = function () {
+    const bar = this.categoryBar;
+    if (!bar) return;
+
+    const canDrag = bar.scrollWidth > bar.clientWidth + 2;
+    bar.classList.toggle("te-can-drag", canDrag);
+    bar.setAttribute(
+      "aria-roledescription",
+      canDrag ? "lista horizontal arrastável" : "lista de categorias"
+    );
+  };
+
+  TextExpressApp.prototype.setupCategoryDragScroll = function () {
+    const bar = this.categoryBar;
+    if (!bar || bar.dataset.teDragScrollReady === "true") return;
+
+    bar.dataset.teDragScrollReady = "true";
+
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let dragging = false;
+    let suppressNextClick = false;
+
+    const DRAG_THRESHOLD = 5;
+
+    const finishDrag = (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+
+      try {
+        if (bar.hasPointerCapture(pointerId)) {
+          bar.releasePointerCapture(pointerId);
+        }
+      } catch {}
+
+      if (dragging) {
+        suppressNextClick = true;
+        window.setTimeout(() => {
+          suppressNextClick = false;
+        }, 250);
+      }
+
+      bar.classList.remove("te-dragging");
+      pointerId = null;
+      dragging = false;
+    };
+
+    bar.addEventListener("pointerdown", (event) => {
+      if (!bar.classList.contains("te-can-drag")) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = bar.scrollLeft;
+      dragging = false;
+
+      try {
+        bar.setPointerCapture(pointerId);
+      } catch {}
+    });
+
+    bar.addEventListener("pointermove", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+
+      if (!dragging) {
+        const horizontalIntent =
+          Math.abs(deltaX) >= DRAG_THRESHOLD &&
+          Math.abs(deltaX) >= Math.abs(deltaY);
+
+        if (!horizontalIntent) return;
+
+        dragging = true;
+        bar.classList.add("te-dragging");
+      }
+
+      event.preventDefault();
+      bar.scrollLeft = startScrollLeft - deltaX;
+    });
+
+    bar.addEventListener("pointerup", finishDrag);
+    bar.addEventListener("pointercancel", finishDrag);
+
+    bar.addEventListener("lostpointercapture", (event) => {
+      if (pointerId !== null && event.pointerId === pointerId) {
+        bar.classList.remove("te-dragging");
+        pointerId = null;
+        dragging = false;
+      }
+    });
+
+    /* Não seleciona uma categoria quando o gesto foi de arraste. */
+    bar.addEventListener(
+      "click",
+      (event) => {
+        if (!suppressNextClick) return;
+        suppressNextClick = false;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true
+    );
+
+    /* A roda vertical do mouse movimenta a faixa horizontalmente. */
+    bar.addEventListener(
+      "wheel",
+      (event) => {
+        if (!bar.classList.contains("te-can-drag")) return;
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+        if (!event.deltaY) return;
+
+        const before = bar.scrollLeft;
+        bar.scrollLeft += event.deltaY;
+
+        if (bar.scrollLeft !== before) {
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
+    /* Navegação por teclado. */
+    bar.addEventListener("keydown", (event) => {
+      if (!bar.classList.contains("te-can-drag")) return;
+
+      const step = Math.max(120, Math.round(bar.clientWidth * 0.28));
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        bar.scrollBy({ left: -step, behavior: "smooth" });
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        bar.scrollBy({ left: step, behavior: "smooth" });
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        bar.scrollTo({ left: 0, behavior: "smooth" });
+      } else if (event.key === "End") {
+        event.preventDefault();
+        bar.scrollTo({ left: bar.scrollWidth, behavior: "smooth" });
+      }
+    });
+
+    if (typeof ResizeObserver === "function") {
+      this.categoryDragResizeObserver = new ResizeObserver(() => {
+        this.updateCategoryDragState();
+      });
+      this.categoryDragResizeObserver.observe(bar);
+    }
+
+    if (typeof MutationObserver === "function") {
+      this.categoryDragMutationObserver = new MutationObserver(() => {
+        window.requestAnimationFrame(() => this.updateCategoryDragState());
+      });
+      this.categoryDragMutationObserver.observe(bar, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+
+    window.addEventListener("resize", () => this.updateCategoryDragState());
+    window.requestAnimationFrame(() => this.updateCategoryDragState());
+  };
+
+  TextExpressApp.prototype.init = function () {
+    const result = teV9Original.init.call(this);
+    this.setupCategoryDragScroll();
     return result;
   };
 
