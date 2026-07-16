@@ -3038,3 +3038,130 @@
     height: 27px;
   }
 }
+
+/* ==========================================================
+   Text Express 12.0 — arrastar e soltar verticalmente
+   ========================================================== */
+
+/* Remove visualmente os controles antigos, inclusive sob cache parcial. */
+#text-express-app .te-card-order-controls {
+  display: none !important;
+}
+
+#text-express-app .te-card-draggable {
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+#text-express-app .te-card-draggable:active {
+  cursor: grabbing;
+}
+
+#text-express-app .te-card-draggable button,
+#text-express-app .te-card-draggable a,
+#text-express-app .te-card-draggable input,
+#text-express-app .te-card-draggable textarea,
+#text-express-app .te-card-draggable select {
+  cursor: pointer;
+}
+
+/* Pequena seta vertical: indicação, não é um botão separado. */
+#text-express-app .te-card-drag-handle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  margin-right: 2px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--te-muted) 76%, transparent);
+  cursor: grab;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+#text-express-app .te-card-drag-handle .te-icon {
+  width: 15px;
+  height: 15px;
+}
+
+#text-express-app .te-card-draggable:hover .te-card-drag-handle {
+  border-color: var(--te-border);
+  background: var(--te-surface-2);
+  color: var(--te-primary);
+}
+
+#text-express-app .te-card-actions .te-card-drag-handle {
+  order: 2;
+}
+
+#text-express-app .te-card-actions .te-card-insert {
+  order: 1;
+}
+
+#text-express-app .te-card-actions [data-te-action="edit"] {
+  order: 3;
+}
+
+#text-express-app .te-card-actions [data-te-action="delete"] {
+  order: 4;
+}
+
+/* Card sendo movimentado. */
+#text-express-app .te-snippet-card.te-card-dragging {
+  z-index: 30;
+  border-color: var(--te-primary) !important;
+  background: color-mix(
+    in srgb,
+    var(--te-primary-soft) 72%,
+    var(--te-surface)
+  ) !important;
+  box-shadow:
+    0 16px 32px rgba(15, 23, 42, .28),
+    0 0 0 2px color-mix(in srgb, var(--te-primary) 30%, transparent) !important;
+  opacity: .9;
+  cursor: grabbing !important;
+  transform: scale(.992);
+  transition: none !important;
+}
+
+#text-express-app .te-snippet-card.te-card-dragging .te-card-drag-handle {
+  border-color: var(--te-primary);
+  background: var(--te-primary);
+  color: #fff;
+  cursor: grabbing;
+}
+
+#text-express-app .te-list.te-list-reordering {
+  cursor: grabbing;
+  scroll-behavior: auto !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#text-express-app .te-list.te-list-reordering .te-snippet-card:not(.te-card-dragging) {
+  transition:
+    transform 130ms ease,
+    margin 130ms ease,
+    border-color 130ms ease;
+}
+
+#text-express-app .te-list.te-list-reordering button,
+#text-express-app .te-list.te-list-reordering a {
+  pointer-events: none;
+}
+
+@media (max-width: 540px) {
+  #text-express-app .te-card-drag-handle {
+    width: 28px;
+    height: 28px;
+  }
+
+  #text-express-app .te-card-drag-handle .te-icon {
+    width: 16px;
+    height: 16px;
+  }
+}

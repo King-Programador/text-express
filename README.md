@@ -1,53 +1,39 @@
-# Text Express 11.0
+# Text Express 12.0
 
-## Ordenação manual de Atendimentos e Protocolos
+## Organização por arrastar e soltar
 
-Cada card possui agora dois controles:
+Os dois botões quadrados de subir e descer foram removidos.
 
-- **↑ Mover para cima**
-- **↓ Mover para baixo**
+Agora, em **Atendimento** e **Protocolo**:
 
-A função está disponível nas abas:
+1. clique com o botão esquerdo em uma área livre do card;
+2. mantenha o botão pressionado;
+3. arraste o modelo para cima ou para baixo;
+4. solte exatamente na posição desejada.
 
-- Atendimento;
-- Protocolo.
+Uma pequena seta vertical aparece no card apenas para indicar que ele pode ser movimentado.
 
-### Como a ordem funciona
+### Comportamento
 
-- Na categoria **Todos**, a pessoa organiza a lista completa da aba.
-- Ao entrar em uma categoria, organiza os modelos visíveis daquela categoria.
-- Quando uma busca está ativa, os botões reorganizam os resultados visíveis.
-- O primeiro modelo não pode subir.
-- O último modelo não pode descer.
-- A posição é atualizada imediatamente.
+- o card inteiro pode ser arrastado;
+- os botões Inserir, Editar, Excluir e Favorito continuam funcionando normalmente;
+- o card acompanha a reorganização da lista em tempo real;
+- a lista rola automaticamente quando o ponteiro se aproxima das bordas;
+- `Esc` cancela o movimento e restaura a ordem anterior;
+- a ordem é salva automaticamente ao soltar;
+- a ordem permanece depois de fechar o navegador ou desligar o computador;
+- exportação, importação e sincronização entre abas preservam a ordem;
+- funciona na categoria Todos, em categorias específicas e durante buscas.
 
-### Persistência
-
-A ordem escolhida:
-
-- fica salva no navegador;
-- permanece depois de fechar ou desligar o computador;
-- é incluída na exportação;
-- é recuperada pela importação;
-- é sincronizada entre abas abertas no mesmo site;
-- continua particular de cada usuário.
-
-A ordem é separada naturalmente porque Atendimentos e Protocolos permanecem em grupos diferentes.
-
-### Atalho de teclado
-
-Com um card selecionado:
-
-- `Alt + ↑` move para cima;
-- `Alt + ↓` move para baixo.
+A organização é individual de cada usuário e fica no navegador dele.
 
 ## Recursos preservados
 
 - tópicos de Protocolo clicáveis e editáveis;
-- categorias arrastáveis horizontalmente;
-- salvamento automático;
-- nome do atendente memorizado;
+- faixa de categorias arrastável horizontalmente;
 - sequências de falas em Atendimento;
+- nome do atendente memorizado;
+- salvamento automático;
 - modo de tela grande;
 - launcher arrastável;
 - importação e exportação.
@@ -62,4 +48,4 @@ Envie para a raiz do GitHub:
 - `bookmarklet.js`
 - `README.md`
 
-Depois aguarde o GitHub Pages e pressione `Ctrl + F5`.
+Depois pressione `Ctrl + F5`.
