@@ -2957,44 +2957,25 @@
 }
 
 /* ==========================================================
-   Text Express 14.0 — arraste instantâneo e destino visível
+   Text Express 15.0 — posição numérica simples
    ========================================================== */
 
-#text-express-app .te-card-instant-draggable {
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: pan-y;
-}
-
-#text-express-app .te-card-instant-draggable:active {
-  cursor: grabbing;
-}
-
-#text-express-app .te-card-instant-draggable button,
-#text-express-app .te-card-instant-draggable a,
-#text-express-app .te-card-instant-draggable input,
-#text-express-app .te-card-instant-draggable textarea,
-#text-express-app .te-card-instant-draggable select,
-#text-express-app .te-card-instant-draggable label {
-  cursor: pointer;
-}
-
-#text-express-app .te-card-drag-indicator {
+#text-express-app .te-position-button {
+  position: relative;
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 27px;
+  width: 28px;
   height: 27px;
-  margin-right: 2px;
-  border: 1px solid var(--te-border);
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 7px;
-  background: var(--te-surface-2);
+  background: transparent;
   color: var(--te-muted);
-  pointer-events: none;
+  cursor: pointer;
 }
 
-#text-express-app .te-card-drag-indicator svg {
+#text-express-app .te-position-button svg {
   width: 15px;
   height: 15px;
   fill: none;
@@ -3004,13 +2985,38 @@
   stroke-linejoin: round;
 }
 
-#text-express-app .te-card-instant-draggable:hover .te-card-drag-indicator {
-  border-color: color-mix(in srgb, var(--te-primary) 58%, var(--te-border));
+#text-express-app .te-position-current {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border: 2px solid var(--te-surface);
+  border-radius: 999px;
+  background: var(--te-surface-3);
+  color: var(--te-muted);
+  font-size: 7px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+#text-express-app .te-position-button:hover,
+#text-express-app .te-position-button:focus-visible {
+  border-color: color-mix(in srgb, var(--te-primary) 55%, var(--te-border));
   background: var(--te-primary-soft);
   color: var(--te-primary);
 }
 
-#text-express-app .te-card-actions .te-card-drag-indicator {
+#text-express-app .te-position-button:hover .te-position-current,
+#text-express-app .te-position-button:focus-visible .te-position-current {
+  background: var(--te-primary);
+  color: #fff;
+}
+
+#text-express-app .te-card-actions .te-position-button {
   order: 2;
 }
 
@@ -3026,110 +3032,129 @@
   order: 4;
 }
 
-/* Card flutuante segue o ponteiro sem atraso. */
-#text-express-app .te-snippet-card.te-card-floating-drag {
-  border-color: var(--te-primary) !important;
-  background: color-mix(
-    in srgb,
-    var(--te-primary-soft) 58%,
-    var(--te-surface)
-  ) !important;
+/* Popover quase imperceptível, aberto apenas ao clicar na seta. */
+#text-express-app .te-position-popover {
+  position: fixed;
+  z-index: 2147483646;
+  width: 224px;
+  padding: 10px;
+  border: 1px solid var(--te-border);
+  border-radius: 11px;
+  background: var(--te-surface);
+  color: var(--te-text);
   box-shadow:
-    0 20px 46px rgba(3, 10, 28, .42),
-    0 0 0 2px color-mix(in srgb, var(--te-primary) 40%, transparent) !important;
-  opacity: .96;
-  cursor: grabbing !important;
-  transition: none !important;
-  will-change: transform;
+    0 18px 44px rgba(3, 10, 28, .34),
+    0 0 0 1px rgba(255, 255, 255, .025);
 }
 
-/* Espaço de destino ocupa o tamanho completo do card. */
-#text-express-app .te-card-drop-placeholder {
-  position: relative;
+#text-express-app .te-position-form {
   display: grid;
-  flex: none;
-  place-items: center;
-  min-height: 68px;
-  margin: 3px 0;
-  overflow: hidden;
-  border: 3px dashed var(--te-primary);
-  border-radius: 12px;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--te-primary) 18%, transparent),
-      color-mix(in srgb, var(--te-primary) 7%, var(--te-surface))
-    );
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--te-primary) 24%, transparent),
-    0 6px 18px color-mix(in srgb, var(--te-primary) 13%, transparent);
-  animation: te-placeholder-pulse 800ms ease-in-out infinite alternate;
+  gap: 9px;
 }
 
-#text-express-app .te-drop-placeholder-content {
+#text-express-app .te-position-popover-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--te-surface) 78%, transparent);
-  color: var(--te-primary);
-  box-shadow: 0 4px 18px rgba(15, 23, 42, .16);
-  font-size: 12px;
-  font-weight: 850;
-  letter-spacing: .01em;
-  pointer-events: none;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-#text-express-app .te-drop-placeholder-arrow {
+#text-express-app .te-position-popover-header strong {
+  font-size: 11px;
+}
+
+#text-express-app .te-position-close {
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
-  border-radius: 999px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--te-muted);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+#text-express-app .te-position-close:hover {
+  background: var(--te-surface-3);
+  color: var(--te-text);
+}
+
+#text-express-app .te-position-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+#text-express-app .te-position-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--te-border);
+  border-radius: 8px;
+  background: var(--te-surface-2);
+  color: var(--te-text);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+
+#text-express-app .te-position-input:focus {
+  border-color: var(--te-primary);
+  outline: 2px solid color-mix(in srgb, var(--te-primary) 20%, transparent);
+}
+
+#text-express-app .te-position-of {
+  color: var(--te-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+#text-express-app .te-position-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#text-express-app .te-position-context {
+  overflow: hidden;
+  color: var(--te-muted);
+  font-size: 8.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#text-express-app .te-position-confirm {
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 7px;
   background: var(--te-primary);
   color: #fff;
-  font-size: 16px;
-  line-height: 1;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-#text-express-app .te-list.te-list-instant-reordering {
-  cursor: grabbing;
-  scroll-behavior: auto !important;
-  user-select: none;
-  -webkit-user-select: none;
+#text-express-app .te-position-confirm:hover {
+  filter: brightness(1.06);
 }
 
-#text-express-app .te-list.te-list-instant-reordering .te-snippet-card {
-  transition: none !important;
+#text-express-app .te-position-moved {
+  animation: te-v15-position-flash 650ms ease;
 }
 
-#text-express-app .te-card-just-moved {
-  animation: te-card-saved-flash 650ms ease;
-}
-
-@keyframes te-placeholder-pulse {
-  from {
-    border-color: color-mix(in srgb, var(--te-primary) 62%, transparent);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--te-primary) 18%, transparent),
-      0 4px 12px color-mix(in srgb, var(--te-primary) 8%, transparent);
-  }
-  to {
-    border-color: var(--te-primary);
-    box-shadow:
-      inset 0 0 0 1px color-mix(in srgb, var(--te-primary) 34%, transparent),
-      0 8px 24px color-mix(in srgb, var(--te-primary) 20%, transparent);
-  }
-}
-
-@keyframes te-card-saved-flash {
+@keyframes te-v15-position-flash {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--te-success) 65%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--te-success) 58%, transparent);
   }
-  45% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--te-success) 35%, transparent);
+  42% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--te-success) 30%, transparent);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;
@@ -3137,12 +3162,7 @@
 }
 
 @media (max-width: 540px) {
-  #text-express-app .te-card-drag-indicator {
-    width: 29px;
-    height: 29px;
-  }
-
-  #text-express-app .te-drop-placeholder-content {
-    font-size: 11px;
+  #text-express-app .te-position-popover {
+    width: min(224px, calc(100vw - 18px));
   }
 }

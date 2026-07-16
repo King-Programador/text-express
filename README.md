@@ -1,37 +1,49 @@
-# Text Express 14.0
+# Text Express 15.0
 
-## Arraste mais rápido e posição de destino visível
+## Organização por posição numérica
 
-O arraste nativo do navegador foi removido. Ele causava atraso e mostrava uma imagem fantasma do card.
+O arraste foi removido.
 
-Agora o Text Express usa movimentação direta pelo ponteiro:
+Agora cada card de Atendimento ou Protocolo possui uma seta vertical discreta com o número da posição atual.
 
-- começa a mover após apenas 3 pixels;
-- o card acompanha o mouse imediatamente;
-- não existe imagem fantasma;
-- não há atraso para trocar de posição;
-- um espaço azul do tamanho do card mostra o destino;
-- o espaço exibe “Soltar na posição X”;
-- a lista rola automaticamente perto das bordas;
-- a nova ordem é salva ao soltar;
-- funciona em Atendimento e Protocolo;
-- Esc cancela o movimento.
+Ao clicar:
 
-Inserir, Editar, Excluir e Favorito continuam funcionando sem iniciar o arraste.
+1. aparece uma pequena janela;
+2. digite a posição desejada, como 1, 2, 3 ou 25;
+3. clique em Mover;
+4. a ordem é salva automaticamente.
+
+A pequena janela informa o total de posições disponíveis e fecha ao clicar fora ou pressionar Esc.
+
+A posição é calculada dentro da visualização atual:
+
+- em Todos, organiza toda a aba;
+- dentro de uma categoria, organiza aquele tópico;
+- durante uma busca, organiza os resultados visíveis.
+
+## Recuperação de categorias
+
+A versão detecta e corrige automaticamente o problema em que:
+
+- categorias de Atendimento desapareceram;
+- categorias de Protocolo desapareceram;
+- todos os modelos foram concentrados em uma única categoria.
+
+A correção:
+
+- restaura todas as categorias padrão ausentes;
+- redistribui os modelos padrão para as categorias originais;
+- mantém categorias personalizadas que ainda existirem;
+- não apaga modelos criados pelo usuário;
+- envia apenas modelos personalizados sem categoria válida para “Outros”.
 
 ## Persistência
 
-A ordem escolhida:
-
-- fica salva no navegador;
-- permanece ao fechar ou desligar o computador;
-- entra na exportação;
-- volta pela importação;
-- sincroniza entre abas abertas no mesmo site.
+A ordem e as categorias ficam salvas no navegador, são incluídas na exportação e sincronizadas entre abas abertas no mesmo site.
 
 ## Atualização
 
-Envie para o GitHub:
+Envie para a raiz do GitHub:
 
 - index.html
 - styles.css

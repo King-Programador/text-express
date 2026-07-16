@@ -1,12 +1,12 @@
 /*
- * Text Express 14.0.0
+ * Text Express 15.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "14.0.0";
+  const APP_VERSION = "15.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -3778,514 +3778,360 @@
 
 
   /* ==========================================================
-   * Text Express 14.0 — arraste vertical instantâneo
-   * Sem HTML5 drag ghost e com placeholder de destino visível.
+   * Text Express 15.0
+   * - Posição numérica simples em Atendimento e Protocolo.
+   * - Sem arrastar e sem botões duplos.
+   * - Recuperação automática de categorias ausentes/colapsadas.
    * ========================================================== */
-  const teV14Original = Object.freeze({
+  const teV15Original = Object.freeze({
     init: TextExpressApp.prototype.init,
+    loadCategories: TextExpressApp.prototype.loadCategories,
+    loadSnippets: TextExpressApp.prototype.loadSnippets,
     renderCard: TextExpressApp.prototype.renderCard,
     handleRootClick: TextExpressApp.prototype.handleRootClick
   });
 
-  TextExpressApp.prototype.canInstantReorderCards = function () {
-    return this.activeType === "atendimento" || this.activeType === "protocolo";
+  TextExpressApp.prototype.normalizeV15CategoryName = function (value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   };
 
-  TextExpressApp.prototype.getInstantDragIndicator = function () {
+  TextExpressApp.prototype.getDefaultCategoryDefinition = function (
+    tipo,
+    nameOrId
+  ) {
+    const normalized = this.normalizeV15CategoryName(nameOrId);
+
+    return DEFAULT_CATEGORIES.find((category) => {
+      return category.tipo === tipo &&
+        (
+          category.id === nameOrId ||
+          this.normalizeV15CategoryName(category.nome) === normalized
+        );
+    }) || null;
+  };
+
+  TextExpressApp.prototype.loadCategories = function () {
+    teV15Original.loadCategories.call(this);
+
+    let changed = false;
+    const byId = new Map(this.categories.map((category) => [category.id, category]));
+
+    /*
+     * Recoloca toda categoria padrão ausente, mas mantém:
+     * - categorias criadas pelo usuário;
+     * - nomes, ícones e cores editados em categorias ainda existentes.
+     */
+    for (const rawDefault of DEFAULT_CATEGORIES) {
+      if (byId.has(rawDefault.id)) continue;
+
+      const sameName = this.categories.find((category) => {
+        return category.tipo === rawDefault.tipo &&
+          this.normalizeV15CategoryName(category.nome) ===
+            this.normalizeV15CategoryName(rawDefault.nome);
+      });
+
+      if (sameName) {
+        /*
+         * Se a mesma categoria existe com outro ID, adota o ID estável
+         * e preserva a personalização visual.
+         */
+        const oldId = sameName.id;
+        sameName.id = rawDefault.id;
+        sameName.padrao = true;
+
+        if (!this.v15CategoryIdRemap) this.v15CategoryIdRemap = new Map();
+        this.v15CategoryIdRemap.set(oldId, rawDefault.id);
+
+        byId.set(rawDefault.id, sameName);
+        changed = true;
+        continue;
+      }
+
+      const restored = this.normalizeCategory(rawDefault);
+      this.categories.push(restored);
+      byId.set(restored.id, restored);
+      changed = true;
+    }
+
+    this.sortCategories();
+
+    if (changed) {
+      this.saveCategories();
+      this.v15CategoriesRestored = true;
+    }
+  };
+
+  TextExpressApp.prototype.getExpectedDefaultCategory = function (
+    defaultSnippet
+  ) {
+    if (!defaultSnippet) return null;
+
+    return this.getDefaultCategoryDefinition(
+      defaultSnippet.tipo === "protocolo" ? "protocolo" : "atendimento",
+      defaultSnippet.categoriaId ||
+        defaultSnippet.categoryId ||
+        defaultSnippet.categoria ||
+        defaultSnippet.category
+    );
+  };
+
+  TextExpressApp.prototype.repairCollapsedDefaultCategories = function () {
+    const defaultsById = new Map(
+      DEFAULT_SNIPPETS.map((snippet) => [snippet.id, snippet])
+    );
+
+    let changed = false;
+
+    for (const tipo of ["atendimento", "protocolo"]) {
+      const matched = this.snippets.filter((snippet) => {
+        const original = defaultsById.get(snippet.id);
+        return original && original.tipo === tipo;
+      });
+
+      if (matched.length < 10) continue;
+
+      const expectedIds = new Set();
+      const currentCounts = new Map();
+      let mismatchCount = 0;
+
+      for (const snippet of matched) {
+        const original = defaultsById.get(snippet.id);
+        const expected = this.getExpectedDefaultCategory(original);
+
+        if (!expected) continue;
+
+        expectedIds.add(expected.id);
+        currentCounts.set(
+          snippet.categoriaId,
+          (currentCounts.get(snippet.categoriaId) || 0) + 1
+        );
+
+        if (snippet.categoriaId !== expected.id) mismatchCount += 1;
+      }
+
+      const dominant = [...currentCounts.entries()]
+        .sort((a, b) => b[1] - a[1])[0] || [null, 0];
+
+      const dominantRatio = matched.length
+        ? dominant[1] / matched.length
+        : 0;
+
+      /*
+       * Só faz reparação ampla quando há sinais claros de colapso:
+       * - a base original esperava várias categorias;
+       * - mais de 70% foi parar em uma única categoria;
+       * - quantidade relevante está fora da categoria esperada.
+       */
+      const collapsed =
+        expectedIds.size >= 3 &&
+        dominantRatio >= 0.70 &&
+        mismatchCount >= Math.max(10, Math.floor(matched.length * 0.28));
+
+      for (const snippet of matched) {
+        const original = defaultsById.get(snippet.id);
+        const expected = this.getExpectedDefaultCategory(original);
+
+        if (!expected) continue;
+
+        const categoryExists = this.categories.some(
+          (category) => category.id === snippet.categoriaId
+        );
+
+        const remappedId = this.v15CategoryIdRemap?.get(snippet.categoriaId);
+
+        if (remappedId) {
+          snippet.categoriaId = remappedId;
+          const remapped = this.getCategoryById(remappedId);
+          if (remapped) snippet.categoria = remapped.nome;
+          changed = true;
+          continue;
+        }
+
+        if (!categoryExists || collapsed) {
+          if (
+            snippet.categoriaId !== expected.id ||
+            snippet.categoria !== expected.nome
+          ) {
+            snippet.categoriaId = expected.id;
+            snippet.categoria = expected.nome;
+            changed = true;
+          }
+        }
+      }
+    }
+
+    /*
+     * Modelos personalizados com uma categoria removida são enviados
+     * somente para "Outros" do tipo correto; não são apagados.
+     */
+    for (const snippet of this.snippets) {
+      const exists = this.categories.some(
+        (category) =>
+          category.id === snippet.categoriaId &&
+          category.tipo === snippet.tipo
+      );
+
+      if (exists) continue;
+
+      const fallback =
+        this.findCategoryByName("Outros", snippet.tipo) ||
+        this.getCategoriesForType(snippet.tipo)[0];
+
+      if (fallback) {
+        snippet.categoriaId = fallback.id;
+        snippet.categoria = fallback.nome;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.saveSnippets();
+      this.v15SnippetCategoriesRestored = true;
+    }
+  };
+
+  TextExpressApp.prototype.loadSnippets = function () {
+    teV15Original.loadSnippets.call(this);
+    this.repairCollapsedDefaultCategories();
+  };
+
+  TextExpressApp.prototype.canChooseNumericPosition = function () {
+    return this.activeType === "atendimento" ||
+      this.activeType === "protocolo";
+  };
+
+  TextExpressApp.prototype.getCurrentVisiblePosition = function (snippetId) {
+    const items = this.getFilteredSnippets();
+    const index = items.findIndex((item) => item.id === snippetId);
+
+    return {
+      items,
+      index,
+      position: index >= 0 ? index + 1 : 0,
+      total: items.length
+    };
+  };
+
+  TextExpressApp.prototype.getPositionButtonMarkup = function (snippet) {
+    if (!this.canChooseNumericPosition()) return "";
+
+    const state = this.getCurrentVisiblePosition(snippet.id);
+    if (state.index < 0) return "";
+
     return `
-      <span
-        class="te-card-drag-indicator"
-        aria-hidden="true"
-        title="Segure o card e arraste para cima ou para baixo">
+      <button
+        class="te-position-button"
+        type="button"
+        data-te-action="model-position-open"
+        data-te-id="${this.escapeAttr(snippet.id)}"
+        title="Escolher posição do modelo"
+        aria-label="Escolher posição de ${this.escapeAttr(snippet.nome)}. Posição atual ${state.position} de ${state.total}">
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
           <path d="m8 7 4-4 4 4"></path>
           <path d="M12 3v18"></path>
           <path d="m8 17 4 4 4-4"></path>
         </svg>
-      </span>`;
+        <span class="te-position-current">${state.position}</span>
+      </button>`;
   };
 
   TextExpressApp.prototype.renderCard = function (snippet) {
-    let html = teV14Original.renderCard.call(this, snippet);
+    let html = teV15Original.renderCard.call(this, snippet);
+    const positionButton = this.getPositionButtonMarkup(snippet);
 
-    if (!this.canInstantReorderCards()) return html;
+    if (!positionButton) return html;
 
-    html = html.replace(
-      /class="te-snippet-card\b/,
-      'class="te-snippet-card te-card-instant-draggable'
-    );
+    const editPattern =
+      /(<button class="te-icon-action" type="button" data-te-action="edit")/;
 
-    const indicator = this.getInstantDragIndicator();
-    const actionsPattern = /(<div class="te-card-actions">)/;
-
-    if (actionsPattern.test(html)) {
-      html = html.replace(actionsPattern, `$1${indicator}`);
-    } else {
-      html = html.replace("</article>", `${indicator}</article>`);
+    if (editPattern.test(html)) {
+      return html.replace(editPattern, `${positionButton}$1`);
     }
 
-    return html;
-  };
+    const textEditPattern =
+      /(<button class="te-text-button" type="button" data-te-action="edit")/;
 
-  TextExpressApp.prototype.getInstantVisibleCardOrder = function () {
-    return [...this.listElement.querySelectorAll(
-      ".te-snippet-card[data-te-card-id]"
-    )]
-      .map((card) => card.dataset.teCardId)
-      .filter(Boolean);
-  };
-
-  TextExpressApp.prototype.persistInstantCardOrder = function (orderedVisibleIds) {
-    if (!this.canInstantReorderCards()) return false;
-
-    const visibleItems = this.getFilteredSnippets();
-    const visibleIdSet = new Set(visibleItems.map((item) => item.id));
-
-    if (
-      orderedVisibleIds.length !== visibleItems.length ||
-      orderedVisibleIds.some((id) => !visibleIdSet.has(id))
-    ) {
-      return false;
+    if (textEditPattern.test(html)) {
+      return html.replace(textEditPattern, `${positionButton}$1`);
     }
 
-    const slots = [];
-    const byId = new Map(this.snippets.map((item) => [item.id, item]));
-
-    this.snippets.forEach((item, index) => {
-      if (visibleIdSet.has(item.id)) slots.push(index);
-    });
-
-    const orderedItems = orderedVisibleIds
-      .map((id) => byId.get(id))
-      .filter(Boolean);
-
-    if (slots.length !== orderedItems.length) return false;
-
-    slots.forEach((slot, index) => {
-      this.snippets[slot] = orderedItems[index];
-    });
-
-    return this.saveSnippets();
+    return html.replace("</article>", `${positionButton}</article>`);
   };
 
-  TextExpressApp.prototype.setupInstantCardReorder = function () {
-    const list = this.listElement;
-    if (!list || list.dataset.teInstantDragReady === "true") return;
-
-    list.dataset.teInstantDragReady = "true";
-
-    let candidateCard = null;
-    let draggedCard = null;
-    let placeholder = null;
-    let pointerId = null;
-    let startX = 0;
-    let startY = 0;
-    let latestX = 0;
-    let latestY = 0;
-    let pointerOffsetX = 0;
-    let pointerOffsetY = 0;
-    let initialRect = null;
-    let initialOrder = [];
-    let initialScrollTop = 0;
-    let dragging = false;
-    let animationFrame = 0;
-    let suppressNextClick = false;
-
-    const DRAG_THRESHOLD = 3;
-    const EDGE_ZONE = 72;
-
-    const INTERACTIVE_SELECTOR = [
-      "button",
-      "a",
-      "input",
-      "textarea",
-      "select",
-      "option",
-      "label",
-      '[contenteditable="true"]',
-      '[contenteditable=""]',
-      '[role="textbox"]'
-    ].join(",");
-
-    const isInteractiveTarget = (target) => {
-      return target instanceof Element &&
-        Boolean(target.closest(INTERACTIVE_SELECTOR));
-    };
-
-    const findCard = (target) => {
-      if (!(target instanceof Element)) return null;
-      return target.closest(
-        ".te-snippet-card.te-card-instant-draggable[data-te-card-id]"
-      );
-    };
-
-    const getListCards = () => {
-      return [...list.querySelectorAll(
-        ".te-snippet-card[data-te-card-id]"
-      )];
-    };
-
-    const getPlaceholderPosition = () => {
-      if (!placeholder) return 0;
-
-      const children = [...list.children].filter((child) => {
-        return child === placeholder ||
-          child.matches?.(".te-snippet-card[data-te-card-id]");
-      });
-
-      return Math.max(1, children.indexOf(placeholder) + 1);
-    };
-
-    const updatePlaceholderLabel = () => {
-      if (!placeholder) return;
-
-      const total = getListCards().length + 1;
-      const position = Math.min(getPlaceholderPosition(), total);
-      const label = placeholder.querySelector(".te-drop-placeholder-label");
-
-      if (label) {
-        label.textContent = `Soltar na posição ${position}`;
-      }
-
-      placeholder.setAttribute(
-        "aria-label",
-        `Soltar modelo na posição ${position}`
-      );
-    };
-
-    const placePlaceholder = (clientY) => {
-      if (!placeholder) return;
-
-      const cards = getListCards();
-      let placed = false;
-
-      for (const card of cards) {
-        const rect = card.getBoundingClientRect();
-        const middle = rect.top + rect.height / 2;
-
-        if (clientY < middle) {
-          if (placeholder.nextElementSibling !== card) {
-            list.insertBefore(placeholder, card);
-          }
-          placed = true;
-          break;
-        }
-      }
-
-      if (!placed && placeholder !== list.lastElementChild) {
-        list.appendChild(placeholder);
-      }
-
-      updatePlaceholderLabel();
-    };
-
-    const updateAutoScroll = () => {
-      const rect = list.getBoundingClientRect();
-      let delta = 0;
-
-      if (latestY < rect.top + EDGE_ZONE) {
-        const strength = Math.max(
-          0,
-          1 - (latestY - rect.top) / EDGE_ZONE
-        );
-        delta = -Math.ceil(5 + strength * 18);
-      } else if (latestY > rect.bottom - EDGE_ZONE) {
-        const strength = Math.max(
-          0,
-          1 - (rect.bottom - latestY) / EDGE_ZONE
-        );
-        delta = Math.ceil(5 + strength * 18);
-      }
-
-      if (delta) {
-        list.scrollTop += delta;
-      }
-    };
-
-    const renderDragFrame = () => {
-      animationFrame = 0;
-
-      if (!dragging || !draggedCard || !initialRect) return;
-
-      const x = latestX - pointerOffsetX;
-      const y = latestY - pointerOffsetY;
-
-      draggedCard.style.transform = `translate3d(
-        ${Math.round(x - initialRect.left)}px,
-        ${Math.round(y - initialRect.top)}px,
-        0
-      )`;
-
-      updateAutoScroll();
-      placePlaceholder(latestY);
-    };
-
-    const requestDragFrame = () => {
-      if (animationFrame) return;
-      animationFrame = window.requestAnimationFrame(renderDragFrame);
-    };
-
-    const clearFloatingStyles = (card) => {
-      if (!card) return;
-
-      card.classList.remove("te-card-floating-drag");
-      card.removeAttribute("aria-grabbed");
-      card.style.position = "";
-      card.style.left = "";
-      card.style.top = "";
-      card.style.width = "";
-      card.style.height = "";
-      card.style.margin = "";
-      card.style.transform = "";
-      card.style.zIndex = "";
-      card.style.pointerEvents = "";
-      card.style.boxSizing = "";
-    };
-
-    const resetState = () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-        animationFrame = 0;
-      }
-
-      list.classList.remove("te-list-instant-reordering");
-
-      candidateCard = null;
-      draggedCard = null;
-      placeholder = null;
-      pointerId = null;
-      initialRect = null;
-      initialOrder = [];
-      dragging = false;
-    };
-
-    const restoreInitialOrder = () => {
-      if (!initialOrder.length) return;
-
-      const cards = new Map(
-        getListCards().map((card) => [card.dataset.teCardId, card])
-      );
-
-      initialOrder.forEach((id) => {
-        const card = cards.get(id);
-        if (card) list.appendChild(card);
-      });
-    };
-
-    const cancelDrag = (showMessage = false) => {
-      if (!dragging || !draggedCard) {
-        resetState();
-        return;
-      }
-
-      clearFloatingStyles(draggedCard);
-
-      if (placeholder?.parentNode) {
-        placeholder.parentNode.removeChild(placeholder);
-      }
-
-      list.appendChild(draggedCard);
-      restoreInitialOrder();
-      list.scrollTop = initialScrollTop;
-
-      try {
-        if (list.hasPointerCapture(pointerId)) {
-          list.releasePointerCapture(pointerId);
-        }
-      } catch {}
-
-      resetState();
-
-      if (showMessage) {
-        this.showToast("Movimento cancelado.", "success", 1600);
-      }
-    };
-
-    const startDrag = (event) => {
-      if (!candidateCard || dragging) return;
-
-      dragging = true;
-      draggedCard = candidateCard;
-      initialOrder = this.getInstantVisibleCardOrder();
-      initialScrollTop = list.scrollTop;
-      initialRect = draggedCard.getBoundingClientRect();
-
-      pointerOffsetX = event.clientX - initialRect.left;
-      pointerOffsetY = event.clientY - initialRect.top;
-
-      placeholder = document.createElement("div");
-      placeholder.className = "te-card-drop-placeholder";
-      placeholder.style.height = `${Math.max(68, initialRect.height)}px`;
-      placeholder.innerHTML = `
-        <div class="te-drop-placeholder-content">
-          <span class="te-drop-placeholder-arrow" aria-hidden="true">↕</span>
-          <strong class="te-drop-placeholder-label">Soltar aqui</strong>
-        </div>`;
-
-      list.insertBefore(placeholder, draggedCard);
-      this.root.appendChild(draggedCard);
-
-      draggedCard.classList.add("te-card-floating-drag");
-      draggedCard.setAttribute("aria-grabbed", "true");
-      draggedCard.style.position = "fixed";
-      draggedCard.style.left = `${initialRect.left}px`;
-      draggedCard.style.top = `${initialRect.top}px`;
-      draggedCard.style.width = `${initialRect.width}px`;
-      draggedCard.style.height = `${initialRect.height}px`;
-      draggedCard.style.margin = "0";
-      draggedCard.style.zIndex = "2147483646";
-      draggedCard.style.pointerEvents = "none";
-      draggedCard.style.boxSizing = "border-box";
-      draggedCard.style.transform = "translate3d(0,0,0)";
-
-      list.classList.add("te-list-instant-reordering");
-
-      try {
-        list.setPointerCapture(pointerId);
-      } catch {}
-
-      placePlaceholder(event.clientY);
-      requestDragFrame();
-    };
-
-    const finishDrag = () => {
-      if (!dragging || !draggedCard || !placeholder) {
-        resetState();
-        return;
-      }
-
-      const movedId = draggedCard.dataset.teCardId;
-      const savedScrollTop = list.scrollTop;
-
-      clearFloatingStyles(draggedCard);
-      list.insertBefore(draggedCard, placeholder);
-      placeholder.remove();
-
-      const newOrder = this.getInstantVisibleCardOrder();
-      const changed = newOrder.join("|") !== initialOrder.join("|");
-
-      try {
-        if (list.hasPointerCapture(pointerId)) {
-          list.releasePointerCapture(pointerId);
-        }
-      } catch {}
-
-      if (!changed) {
-        resetState();
-        return;
-      }
-
-      const saved = this.persistInstantCardOrder(newOrder);
-
-      if (!saved) {
-        restoreInitialOrder();
-        resetState();
-        this.renderSnippets();
-        this.showToast("Não foi possível salvar a nova ordem.", "error");
-        return;
-      }
-
-      this.selectedId = movedId || this.selectedId;
-      resetState();
-      this.renderSnippets();
-
-      window.requestAnimationFrame(() => {
-        list.scrollTop = savedScrollTop;
-
-        const movedCard = [...list.querySelectorAll("[data-te-card-id]")]
-          .find((card) => card.dataset.teCardId === movedId);
-
-        movedCard?.classList.add("te-card-just-moved");
-
-        window.setTimeout(() => {
-          movedCard?.classList.remove("te-card-just-moved");
-        }, 650);
-      });
-
-      suppressNextClick = true;
-      window.setTimeout(() => {
-        suppressNextClick = false;
-      }, 160);
-
-      this.showToast("Nova posição salva.", "success", 1800);
-    };
-
-    list.addEventListener("pointerdown", (event) => {
-      if (!this.canInstantReorderCards()) return;
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (isInteractiveTarget(event.target)) return;
-
-      const card = findCard(event.target);
-      if (!card) return;
-
-      candidateCard = card;
-      pointerId = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
-      latestX = event.clientX;
-      latestY = event.clientY;
-      dragging = false;
-    });
-
-    list.addEventListener("pointermove", (event) => {
-      if (pointerId === null || event.pointerId !== pointerId) return;
-
-      latestX = event.clientX;
-      latestY = event.clientY;
-
-      if (!dragging) {
-        const deltaX = event.clientX - startX;
-        const deltaY = event.clientY - startY;
-
-        if (
-          Math.abs(deltaY) < DRAG_THRESHOLD ||
-          Math.abs(deltaY) <= Math.abs(deltaX)
-        ) {
-          return;
-        }
-
-        startDrag(event);
-      }
-
-      if (!dragging) return;
-
+  TextExpressApp.prototype.ensurePositionPopover = function () {
+    if (this.positionPopover) return;
+
+    const popover = document.createElement("div");
+    popover.className = "te-position-popover te-hidden";
+    popover.setAttribute("role", "dialog");
+    popover.setAttribute("aria-modal", "false");
+    popover.setAttribute("aria-label", "Escolher posição do modelo");
+
+    popover.innerHTML = `
+      <form class="te-position-form">
+        <div class="te-position-popover-header">
+          <strong>Mover para a posição</strong>
+          <button
+            class="te-position-close"
+            type="button"
+            data-te-position-close
+            aria-label="Fechar">×</button>
+        </div>
+        <div class="te-position-control">
+          <input
+            class="te-position-input"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            autocomplete="off"
+            aria-label="Número da posição">
+          <span class="te-position-of">de 1</span>
+        </div>
+        <div class="te-position-popover-footer">
+          <small class="te-position-context"></small>
+          <button class="te-position-confirm" type="submit">Mover</button>
+        </div>
+      </form>`;
+
+    this.root.appendChild(popover);
+
+    this.positionPopover = popover;
+    this.positionForm = popover.querySelector(".te-position-form");
+    this.positionInput = popover.querySelector(".te-position-input");
+    this.positionOf = popover.querySelector(".te-position-of");
+    this.positionContext = popover.querySelector(".te-position-context");
+
+    this.positionForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      requestDragFrame();
+
+      const id = this.positionPopover.dataset.teSnippetId;
+      const requested = Number.parseInt(this.positionInput.value, 10);
+
+      this.moveModelToNumericPosition(id, requested);
     });
 
-    list.addEventListener("pointerup", (event) => {
-      if (pointerId === null || event.pointerId !== pointerId) return;
+    popover
+      .querySelector("[data-te-position-close]")
+      .addEventListener("click", () => this.closePositionPopover());
 
-      if (dragging) {
-        event.preventDefault();
-        finishDrag();
-      } else {
-        resetState();
-      }
-    });
-
-    list.addEventListener("pointercancel", (event) => {
-      if (pointerId === null || event.pointerId !== pointerId) return;
-      cancelDrag(false);
-    });
-
-    list.addEventListener("lostpointercapture", (event) => {
-      if (
-        dragging &&
-        pointerId !== null &&
-        event.pointerId === pointerId
-      ) {
-        cancelDrag(false);
-      }
-    });
-
-    list.addEventListener(
-      "click",
+    document.addEventListener(
+      "pointerdown",
       (event) => {
-        if (!suppressNextClick) return;
-        suppressNextClick = false;
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        if (this.positionPopover.classList.contains("te-hidden")) return;
+
+        const insidePopover = event.target.closest?.(".te-position-popover");
+        const positionButton = event.target.closest?.(
+          '[data-te-action="model-position-open"]'
+        );
+
+        if (!insidePopover && !positionButton) {
+          this.closePositionPopover();
+        }
       },
       true
     );
@@ -4293,21 +4139,212 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key !== "Escape" || !dragging) return;
-        event.preventDefault();
-        cancelDrag(true);
+        if (
+          event.key === "Escape" &&
+          !this.positionPopover.classList.contains("te-hidden")
+        ) {
+          event.preventDefault();
+          this.closePositionPopover();
+        }
       },
       true
     );
   };
 
+  TextExpressApp.prototype.openPositionPopover = function (
+    snippetId,
+    anchorButton
+  ) {
+    this.ensurePositionPopover();
+
+    const snippet = this.snippets.find((item) => item.id === snippetId);
+    const state = this.getCurrentVisiblePosition(snippetId);
+
+    if (!snippet || state.index < 0 || !state.total) return;
+
+    this.positionPopover.dataset.teSnippetId = snippetId;
+    this.positionInput.min = "1";
+    this.positionInput.max = String(state.total);
+    this.positionInput.value = String(state.position);
+    this.positionOf.textContent = `de ${state.total}`;
+    this.positionContext.textContent =
+      this.activeCategory === "Todos"
+        ? `Organizando ${this.activeType === "protocolo" ? "Protocolos" : "Atendimentos"}`
+        : "Organizando o tópico atual";
+
+    this.positionPopover.classList.remove("te-hidden");
+
+    const anchorRect = anchorButton.getBoundingClientRect();
+    const popoverRect = this.positionPopover.getBoundingClientRect();
+    const margin = 8;
+
+    let left = anchorRect.right - popoverRect.width;
+    let top = anchorRect.bottom + margin;
+
+    left = Math.max(
+      margin,
+      Math.min(left, window.innerWidth - popoverRect.width - margin)
+    );
+
+    if (top + popoverRect.height > window.innerHeight - margin) {
+      top = anchorRect.top - popoverRect.height - margin;
+    }
+
+    top = Math.max(
+      margin,
+      Math.min(top, window.innerHeight - popoverRect.height - margin)
+    );
+
+    this.positionPopover.style.left = `${Math.round(left)}px`;
+    this.positionPopover.style.top = `${Math.round(top)}px`;
+
+    window.setTimeout(() => {
+      this.positionInput.focus();
+      this.positionInput.select();
+    }, 20);
+  };
+
+  TextExpressApp.prototype.closePositionPopover = function () {
+    if (!this.positionPopover) return;
+
+    this.positionPopover.classList.add("te-hidden");
+    delete this.positionPopover.dataset.teSnippetId;
+  };
+
+  TextExpressApp.prototype.moveModelToNumericPosition = function (
+    snippetId,
+    requestedPosition
+  ) {
+    const state = this.getCurrentVisiblePosition(snippetId);
+
+    if (state.index < 0 || !state.total) {
+      this.closePositionPopover();
+      return false;
+    }
+
+    const targetPosition = Math.min(
+      state.total,
+      Math.max(1, Number.isFinite(requestedPosition)
+        ? requestedPosition
+        : state.position)
+    );
+
+    const targetIndex = targetPosition - 1;
+
+    if (targetIndex === state.index) {
+      this.closePositionPopover();
+      this.showToast("O modelo já está nessa posição.", "success", 1700);
+      return true;
+    }
+
+    const orderedIds = state.items.map((item) => item.id);
+    const [movedId] = orderedIds.splice(state.index, 1);
+    orderedIds.splice(targetIndex, 0, movedId);
+
+    const visibleIdSet = new Set(orderedIds);
+    const slots = [];
+
+    this.snippets.forEach((snippet, index) => {
+      if (visibleIdSet.has(snippet.id)) slots.push(index);
+    });
+
+    const snippetsById = new Map(
+      this.snippets.map((snippet) => [snippet.id, snippet])
+    );
+
+    const reordered = orderedIds
+      .map((id) => snippetsById.get(id))
+      .filter(Boolean);
+
+    if (slots.length !== reordered.length) {
+      this.closePositionPopover();
+      this.showToast("Não foi possível reorganizar o modelo.", "error");
+      return false;
+    }
+
+    slots.forEach((slot, index) => {
+      this.snippets[slot] = reordered[index];
+    });
+
+    this.selectedId = snippetId;
+
+    const saved = this.saveSnippets();
+
+    if (!saved) {
+      this.closePositionPopover();
+      this.showToast("Não foi possível salvar a nova posição.", "error");
+      return false;
+    }
+
+    this.closePositionPopover();
+    this.renderSnippets();
+
+    window.requestAnimationFrame(() => {
+      const card = [...this.listElement.querySelectorAll("[data-te-card-id]")]
+        .find((element) => element.dataset.teCardId === snippetId);
+
+      card?.classList.add("te-position-moved");
+
+      card?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest"
+      });
+
+      window.setTimeout(() => {
+        card?.classList.remove("te-position-moved");
+      }, 650);
+    });
+
+    this.showToast(
+      `Modelo movido para a posição ${targetPosition}.`,
+      "success",
+      2200
+    );
+
+    return true;
+  };
+
   TextExpressApp.prototype.handleRootClick = function (event) {
-    return teV14Original.handleRootClick.call(this, event);
+    const positionButton = event.target.closest(
+      '[data-te-action="model-position-open"]'
+    );
+
+    if (positionButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.openPositionPopover(
+        positionButton.dataset.teId,
+        positionButton
+      );
+      return;
+    }
+
+    return teV15Original.handleRootClick.call(this, event);
   };
 
   TextExpressApp.prototype.init = function () {
-    const result = teV14Original.init.call(this);
-    this.setupInstantCardReorder();
+    this.v15CategoryIdRemap = new Map();
+    this.positionPopover = null;
+
+    const result = teV15Original.init.call(this);
+
+    this.ensurePositionPopover();
+
+    if (
+      this.v15CategoriesRestored ||
+      this.v15SnippetCategoriesRestored
+    ) {
+      window.setTimeout(() => {
+        this.showToast(
+          "Categorias de Atendimento e Protocolo foram restauradas.",
+          "success",
+          4200
+        );
+      }, 250);
+    }
+
     return result;
   };
 
