@@ -1,12 +1,12 @@
 /*
- * Text Express 13.0.0
+ * Text Express 14.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "13.0.0";
+  const APP_VERSION = "14.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -3778,25 +3778,20 @@
 
 
   /* ==========================================================
-   * Text Express 13.0 — arrastar e soltar corrigido
-   * Usa o recurso nativo de drag and drop do navegador.
-   * Disponível em Atendimento e Protocolo.
+   * Text Express 14.0 — arraste vertical instantâneo
+   * Sem HTML5 drag ghost e com placeholder de destino visível.
    * ========================================================== */
-  const teV13Original = Object.freeze({
+  const teV14Original = Object.freeze({
     init: TextExpressApp.prototype.init,
     renderCard: TextExpressApp.prototype.renderCard,
     handleRootClick: TextExpressApp.prototype.handleRootClick
   });
 
-  TextExpressApp.prototype.canReorderCards = function () {
+  TextExpressApp.prototype.canInstantReorderCards = function () {
     return this.activeType === "atendimento" || this.activeType === "protocolo";
   };
 
-  TextExpressApp.prototype.getDragIndicatorMarkup = function () {
-    /*
-     * SVG direto: não passa pelo catálogo de ícones.
-     * Isso evita o erro anterior que transformava a seta em pasta.
-     */
+  TextExpressApp.prototype.getInstantDragIndicator = function () {
     return `
       <span
         class="te-card-drag-indicator"
@@ -3811,20 +3806,16 @@
   };
 
   TextExpressApp.prototype.renderCard = function (snippet) {
-    let html = teV13Original.renderCard.call(this, snippet);
+    let html = teV14Original.renderCard.call(this, snippet);
 
-    if (!this.canReorderCards()) return html;
+    if (!this.canInstantReorderCards()) return html;
 
-    /*
-     * O card inteiro é arrastável. Os botões continuam excluídos
-     * pelo controle de pointerdown/dragstart abaixo.
-     */
     html = html.replace(
-      /<article class="te-snippet-card\b/,
-      '<article draggable="true" aria-grabbed="false" class="te-snippet-card te-card-draggable'
+      /class="te-snippet-card\b/,
+      'class="te-snippet-card te-card-instant-draggable'
     );
 
-    const indicator = this.getDragIndicatorMarkup();
+    const indicator = this.getInstantDragIndicator();
     const actionsPattern = /(<div class="te-card-actions">)/;
 
     if (actionsPattern.test(html)) {
@@ -3836,7 +3827,7 @@
     return html;
   };
 
-  TextExpressApp.prototype.getVisibleCardOrder = function () {
+  TextExpressApp.prototype.getInstantVisibleCardOrder = function () {
     return [...this.listElement.querySelectorAll(
       ".te-snippet-card[data-te-card-id]"
     )]
@@ -3844,81 +3835,64 @@
       .filter(Boolean);
   };
 
-  TextExpressApp.prototype.restoreVisibleCardOrder = function (order) {
-    if (!Array.isArray(order) || !order.length) return;
-
-    const cards = new Map(
-      [...this.listElement.querySelectorAll(
-        ".te-snippet-card[data-te-card-id]"
-      )].map((card) => [card.dataset.teCardId, card])
-    );
-
-    for (const id of order) {
-      const card = cards.get(id);
-      if (card) this.listElement.appendChild(card);
-    }
-  };
-
-  TextExpressApp.prototype.saveVisibleCardOrder = function (orderedVisibleIds) {
-    if (!this.canReorderCards()) return false;
+  TextExpressApp.prototype.persistInstantCardOrder = function (orderedVisibleIds) {
+    if (!this.canInstantReorderCards()) return false;
 
     const visibleItems = this.getFilteredSnippets();
-    const visibleIds = visibleItems.map((item) => item.id);
-    const visibleIdSet = new Set(visibleIds);
+    const visibleIdSet = new Set(visibleItems.map((item) => item.id));
 
     if (
-      orderedVisibleIds.length !== visibleIds.length ||
+      orderedVisibleIds.length !== visibleItems.length ||
       orderedVisibleIds.some((id) => !visibleIdSet.has(id))
     ) {
       return false;
     }
 
-    /*
-     * Apenas os espaços ocupados pelos itens visíveis são reorganizados.
-     * Itens de outras abas/categorias continuam nos próprios espaços.
-     */
-    const visibleSlots = [];
-    const snippetsById = new Map(
-      this.snippets.map((snippet) => [snippet.id, snippet])
-    );
+    const slots = [];
+    const byId = new Map(this.snippets.map((item) => [item.id, item]));
 
-    this.snippets.forEach((snippet, index) => {
-      if (visibleIdSet.has(snippet.id)) visibleSlots.push(index);
+    this.snippets.forEach((item, index) => {
+      if (visibleIdSet.has(item.id)) slots.push(index);
     });
 
-    const reorderedItems = orderedVisibleIds
-      .map((id) => snippetsById.get(id))
+    const orderedItems = orderedVisibleIds
+      .map((id) => byId.get(id))
       .filter(Boolean);
 
-    if (visibleSlots.length !== reorderedItems.length) return false;
+    if (slots.length !== orderedItems.length) return false;
 
-    visibleSlots.forEach((slot, index) => {
-      this.snippets[slot] = reorderedItems[index];
+    slots.forEach((slot, index) => {
+      this.snippets[slot] = orderedItems[index];
     });
 
-    /*
-     * saveSnippets já:
-     * - grava no navegador;
-     * - atualiza atalhos;
-     * - sincroniza outras abas;
-     * - inclui a ordem na exportação.
-     */
     return this.saveSnippets();
   };
 
-  TextExpressApp.prototype.setupNativeCardDragDrop = function () {
+  TextExpressApp.prototype.setupInstantCardReorder = function () {
     const list = this.listElement;
-    if (!list || list.dataset.teNativeDragReady === "true") return;
+    if (!list || list.dataset.teInstantDragReady === "true") return;
 
-    list.dataset.teNativeDragReady = "true";
+    list.dataset.teInstantDragReady = "true";
 
+    let candidateCard = null;
     let draggedCard = null;
+    let placeholder = null;
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let latestX = 0;
+    let latestY = 0;
+    let pointerOffsetX = 0;
+    let pointerOffsetY = 0;
+    let initialRect = null;
     let initialOrder = [];
-    let droppedInsideList = false;
-    let startedOnInteractiveElement = false;
+    let initialScrollTop = 0;
+    let dragging = false;
+    let animationFrame = 0;
     let suppressNextClick = false;
-    let lastPointerY = 0;
-    let autoScrollFrame = 0;
+
+    const DRAG_THRESHOLD = 3;
+    const EDGE_ZONE = 72;
 
     const INTERACTIVE_SELECTOR = [
       "button",
@@ -3933,251 +3907,375 @@
       '[role="textbox"]'
     ].join(",");
 
-    const isInteractive = (target) => {
+    const isInteractiveTarget = (target) => {
       return target instanceof Element &&
         Boolean(target.closest(INTERACTIVE_SELECTOR));
     };
 
     const findCard = (target) => {
       if (!(target instanceof Element)) return null;
-      return target.closest(".te-snippet-card[data-te-card-id]");
+      return target.closest(
+        ".te-snippet-card.te-card-instant-draggable[data-te-card-id]"
+      );
     };
 
-    const clearDropTargets = () => {
-      list.querySelectorAll(".te-card-drop-before, .te-card-drop-after")
-        .forEach((card) => {
-          card.classList.remove("te-card-drop-before", "te-card-drop-after");
-        });
+    const getListCards = () => {
+      return [...list.querySelectorAll(
+        ".te-snippet-card[data-te-card-id]"
+      )];
     };
 
-    const getInsertionTarget = (clientY) => {
-      const candidates = [
-        ...list.querySelectorAll(
-          ".te-snippet-card[data-te-card-id]:not(.te-card-dragging)"
-        )
-      ];
+    const getPlaceholderPosition = () => {
+      if (!placeholder) return 0;
 
-      for (const card of candidates) {
+      const children = [...list.children].filter((child) => {
+        return child === placeholder ||
+          child.matches?.(".te-snippet-card[data-te-card-id]");
+      });
+
+      return Math.max(1, children.indexOf(placeholder) + 1);
+    };
+
+    const updatePlaceholderLabel = () => {
+      if (!placeholder) return;
+
+      const total = getListCards().length + 1;
+      const position = Math.min(getPlaceholderPosition(), total);
+      const label = placeholder.querySelector(".te-drop-placeholder-label");
+
+      if (label) {
+        label.textContent = `Soltar na posição ${position}`;
+      }
+
+      placeholder.setAttribute(
+        "aria-label",
+        `Soltar modelo na posição ${position}`
+      );
+    };
+
+    const placePlaceholder = (clientY) => {
+      if (!placeholder) return;
+
+      const cards = getListCards();
+      let placed = false;
+
+      for (const card of cards) {
         const rect = card.getBoundingClientRect();
         const middle = rect.top + rect.height / 2;
 
         if (clientY < middle) {
-          return { card, before: true };
+          if (placeholder.nextElementSibling !== card) {
+            list.insertBefore(placeholder, card);
+          }
+          placed = true;
+          break;
         }
       }
 
-      return { card: candidates[candidates.length - 1] || null, before: false };
+      if (!placed && placeholder !== list.lastElementChild) {
+        list.appendChild(placeholder);
+      }
+
+      updatePlaceholderLabel();
     };
 
-    const moveDraggedCard = (clientY) => {
-      if (!draggedCard) return;
-
-      clearDropTargets();
-
-      const target = getInsertionTarget(clientY);
-
-      if (!target.card) {
-        list.appendChild(draggedCard);
-        return;
-      }
-
-      if (target.before) {
-        target.card.classList.add("te-card-drop-before");
-        if (target.card !== draggedCard.nextElementSibling) {
-          list.insertBefore(draggedCard, target.card);
-        }
-      } else {
-        target.card.classList.add("te-card-drop-after");
-        if (target.card.nextElementSibling !== draggedCard) {
-          list.insertBefore(draggedCard, target.card.nextElementSibling);
-        }
-      }
-    };
-
-    const performEdgeAutoScroll = () => {
-      if (!draggedCard) {
-        autoScrollFrame = 0;
-        return;
-      }
-
+    const updateAutoScroll = () => {
       const rect = list.getBoundingClientRect();
-      const zone = Math.min(70, Math.max(42, rect.height * 0.12));
       let delta = 0;
 
-      if (lastPointerY < rect.top + zone) {
-        const strength = 1 - Math.max(0, lastPointerY - rect.top) / zone;
-        delta = -Math.ceil(4 + strength * 18);
-      } else if (lastPointerY > rect.bottom - zone) {
-        const strength = 1 - Math.max(0, rect.bottom - lastPointerY) / zone;
-        delta = Math.ceil(4 + strength * 18);
+      if (latestY < rect.top + EDGE_ZONE) {
+        const strength = Math.max(
+          0,
+          1 - (latestY - rect.top) / EDGE_ZONE
+        );
+        delta = -Math.ceil(5 + strength * 18);
+      } else if (latestY > rect.bottom - EDGE_ZONE) {
+        const strength = Math.max(
+          0,
+          1 - (rect.bottom - latestY) / EDGE_ZONE
+        );
+        delta = Math.ceil(5 + strength * 18);
       }
 
       if (delta) {
         list.scrollTop += delta;
-        moveDraggedCard(lastPointerY);
-      }
-
-      autoScrollFrame = window.requestAnimationFrame(performEdgeAutoScroll);
-    };
-
-    const stopAutoScroll = () => {
-      if (autoScrollFrame) {
-        window.cancelAnimationFrame(autoScrollFrame);
-        autoScrollFrame = 0;
       }
     };
 
-    const cleanup = () => {
-      stopAutoScroll();
-      clearDropTargets();
+    const renderDragFrame = () => {
+      animationFrame = 0;
 
-      if (draggedCard) {
-        draggedCard.classList.remove("te-card-dragging");
-        draggedCard.setAttribute("aria-grabbed", "false");
+      if (!dragging || !draggedCard || !initialRect) return;
+
+      const x = latestX - pointerOffsetX;
+      const y = latestY - pointerOffsetY;
+
+      draggedCard.style.transform = `translate3d(
+        ${Math.round(x - initialRect.left)}px,
+        ${Math.round(y - initialRect.top)}px,
+        0
+      )`;
+
+      updateAutoScroll();
+      placePlaceholder(latestY);
+    };
+
+    const requestDragFrame = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(renderDragFrame);
+    };
+
+    const clearFloatingStyles = (card) => {
+      if (!card) return;
+
+      card.classList.remove("te-card-floating-drag");
+      card.removeAttribute("aria-grabbed");
+      card.style.position = "";
+      card.style.left = "";
+      card.style.top = "";
+      card.style.width = "";
+      card.style.height = "";
+      card.style.margin = "";
+      card.style.transform = "";
+      card.style.zIndex = "";
+      card.style.pointerEvents = "";
+      card.style.boxSizing = "";
+    };
+
+    const resetState = () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
       }
 
-      list.classList.remove("te-list-reordering");
+      list.classList.remove("te-list-instant-reordering");
+
+      candidateCard = null;
       draggedCard = null;
+      placeholder = null;
+      pointerId = null;
+      initialRect = null;
       initialOrder = [];
-      droppedInsideList = false;
-      startedOnInteractiveElement = false;
+      dragging = false;
     };
 
-    const restoreAndCleanup = () => {
-      this.restoreVisibleCardOrder(initialOrder);
-      cleanup();
+    const restoreInitialOrder = () => {
+      if (!initialOrder.length) return;
+
+      const cards = new Map(
+        getListCards().map((card) => [card.dataset.teCardId, card])
+      );
+
+      initialOrder.forEach((id) => {
+        const card = cards.get(id);
+        if (card) list.appendChild(card);
+      });
     };
 
-    /*
-     * Registra se o gesto começou em um botão.
-     * Dessa forma, Inserir/Editar/Excluir/Favorito não iniciam arraste.
-     */
-    list.addEventListener("pointerdown", (event) => {
-      startedOnInteractiveElement = isInteractive(event.target);
-    }, true);
-
-    list.addEventListener("dragstart", (event) => {
-      const card = findCard(event.target);
-
-      if (
-        !card ||
-        !this.canReorderCards() ||
-        startedOnInteractiveElement
-      ) {
-        event.preventDefault();
+    const cancelDrag = (showMessage = false) => {
+      if (!dragging || !draggedCard) {
+        resetState();
         return;
       }
 
-      draggedCard = card;
-      initialOrder = this.getVisibleCardOrder();
-      droppedInsideList = false;
-      lastPointerY = event.clientY;
+      clearFloatingStyles(draggedCard);
 
-      card.classList.add("te-card-dragging");
-      card.setAttribute("aria-grabbed", "true");
-      list.classList.add("te-list-reordering");
-
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.dropEffect = "move";
-        event.dataTransfer.setData(
-          "text/plain",
-          card.dataset.teCardId || "text-express-card"
-        );
-
-        /*
-         * O próprio card é usado como imagem do arraste.
-         * O pequeno deslocamento evita que a imagem cubra o ponteiro.
-         */
-        try {
-          event.dataTransfer.setDragImage(card, 24, 18);
-        } catch {}
+      if (placeholder?.parentNode) {
+        placeholder.parentNode.removeChild(placeholder);
       }
 
-      stopAutoScroll();
-      autoScrollFrame = window.requestAnimationFrame(performEdgeAutoScroll);
-    });
+      list.appendChild(draggedCard);
+      restoreInitialOrder();
+      list.scrollTop = initialScrollTop;
 
-    list.addEventListener("dragover", (event) => {
-      if (!draggedCard) return;
+      try {
+        if (list.hasPointerCapture(pointerId)) {
+          list.releasePointerCapture(pointerId);
+        }
+      } catch {}
 
-      event.preventDefault();
-      lastPointerY = event.clientY;
+      resetState();
 
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
+      if (showMessage) {
+        this.showToast("Movimento cancelado.", "success", 1600);
+      }
+    };
+
+    const startDrag = (event) => {
+      if (!candidateCard || dragging) return;
+
+      dragging = true;
+      draggedCard = candidateCard;
+      initialOrder = this.getInstantVisibleCardOrder();
+      initialScrollTop = list.scrollTop;
+      initialRect = draggedCard.getBoundingClientRect();
+
+      pointerOffsetX = event.clientX - initialRect.left;
+      pointerOffsetY = event.clientY - initialRect.top;
+
+      placeholder = document.createElement("div");
+      placeholder.className = "te-card-drop-placeholder";
+      placeholder.style.height = `${Math.max(68, initialRect.height)}px`;
+      placeholder.innerHTML = `
+        <div class="te-drop-placeholder-content">
+          <span class="te-drop-placeholder-arrow" aria-hidden="true">↕</span>
+          <strong class="te-drop-placeholder-label">Soltar aqui</strong>
+        </div>`;
+
+      list.insertBefore(placeholder, draggedCard);
+      this.root.appendChild(draggedCard);
+
+      draggedCard.classList.add("te-card-floating-drag");
+      draggedCard.setAttribute("aria-grabbed", "true");
+      draggedCard.style.position = "fixed";
+      draggedCard.style.left = `${initialRect.left}px`;
+      draggedCard.style.top = `${initialRect.top}px`;
+      draggedCard.style.width = `${initialRect.width}px`;
+      draggedCard.style.height = `${initialRect.height}px`;
+      draggedCard.style.margin = "0";
+      draggedCard.style.zIndex = "2147483646";
+      draggedCard.style.pointerEvents = "none";
+      draggedCard.style.boxSizing = "border-box";
+      draggedCard.style.transform = "translate3d(0,0,0)";
+
+      list.classList.add("te-list-instant-reordering");
+
+      try {
+        list.setPointerCapture(pointerId);
+      } catch {}
+
+      placePlaceholder(event.clientY);
+      requestDragFrame();
+    };
+
+    const finishDrag = () => {
+      if (!dragging || !draggedCard || !placeholder) {
+        resetState();
+        return;
       }
 
-      moveDraggedCard(event.clientY);
-    });
-
-    list.addEventListener("dragenter", (event) => {
-      if (!draggedCard) return;
-      event.preventDefault();
-    });
-
-    list.addEventListener("drop", (event) => {
-      if (!draggedCard) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      droppedInsideList = true;
-
-      moveDraggedCard(event.clientY);
-
-      const draggedId = draggedCard.dataset.teCardId;
-      const newOrder = this.getVisibleCardOrder();
-      const changed = newOrder.join("|") !== initialOrder.join("|");
+      const movedId = draggedCard.dataset.teCardId;
       const savedScrollTop = list.scrollTop;
 
+      clearFloatingStyles(draggedCard);
+      list.insertBefore(draggedCard, placeholder);
+      placeholder.remove();
+
+      const newOrder = this.getInstantVisibleCardOrder();
+      const changed = newOrder.join("|") !== initialOrder.join("|");
+
+      try {
+        if (list.hasPointerCapture(pointerId)) {
+          list.releasePointerCapture(pointerId);
+        }
+      } catch {}
+
       if (!changed) {
-        cleanup();
+        resetState();
         return;
       }
 
-      const saved = this.saveVisibleCardOrder(newOrder);
+      const saved = this.persistInstantCardOrder(newOrder);
 
       if (!saved) {
-        restoreAndCleanup();
+        restoreInitialOrder();
+        resetState();
         this.renderSnippets();
         this.showToast("Não foi possível salvar a nova ordem.", "error");
         return;
       }
 
-      this.selectedId = draggedId || this.selectedId;
-      cleanup();
+      this.selectedId = movedId || this.selectedId;
+      resetState();
       this.renderSnippets();
 
       window.requestAnimationFrame(() => {
         list.scrollTop = savedScrollTop;
 
         const movedCard = [...list.querySelectorAll("[data-te-card-id]")]
-          .find((card) => card.dataset.teCardId === draggedId);
+          .find((card) => card.dataset.teCardId === movedId);
 
-        movedCard?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-          inline: "nearest"
-        });
+        movedCard?.classList.add("te-card-just-moved");
+
+        window.setTimeout(() => {
+          movedCard?.classList.remove("te-card-just-moved");
+        }, 650);
       });
 
       suppressNextClick = true;
       window.setTimeout(() => {
         suppressNextClick = false;
-      }, 220);
+      }, 160);
 
-      this.showToast("Nova posição salva.", "success", 2300);
+      this.showToast("Nova posição salva.", "success", 1800);
+    };
+
+    list.addEventListener("pointerdown", (event) => {
+      if (!this.canInstantReorderCards()) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (isInteractiveTarget(event.target)) return;
+
+      const card = findCard(event.target);
+      if (!card) return;
+
+      candidateCard = card;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      latestX = event.clientX;
+      latestY = event.clientY;
+      dragging = false;
     });
 
-    list.addEventListener("dragend", () => {
-      /*
-       * Soltar fora da lista cancela e restaura a ordem anterior.
-       * Soltar dentro da lista já foi tratado pelo evento drop.
-       */
-      if (draggedCard && !droppedInsideList) {
-        restoreAndCleanup();
-      } else if (draggedCard) {
-        cleanup();
+    list.addEventListener("pointermove", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+
+      latestX = event.clientX;
+      latestY = event.clientY;
+
+      if (!dragging) {
+        const deltaX = event.clientX - startX;
+        const deltaY = event.clientY - startY;
+
+        if (
+          Math.abs(deltaY) < DRAG_THRESHOLD ||
+          Math.abs(deltaY) <= Math.abs(deltaX)
+        ) {
+          return;
+        }
+
+        startDrag(event);
+      }
+
+      if (!dragging) return;
+
+      event.preventDefault();
+      requestDragFrame();
+    });
+
+    list.addEventListener("pointerup", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+
+      if (dragging) {
+        event.preventDefault();
+        finishDrag();
+      } else {
+        resetState();
+      }
+    });
+
+    list.addEventListener("pointercancel", (event) => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      cancelDrag(false);
+    });
+
+    list.addEventListener("lostpointercapture", (event) => {
+      if (
+        dragging &&
+        pointerId !== null &&
+        event.pointerId === pointerId
+      ) {
+        cancelDrag(false);
       }
     });
 
@@ -4195,27 +4293,21 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key !== "Escape" || !draggedCard) return;
-
+        if (event.key !== "Escape" || !dragging) return;
         event.preventDefault();
-        restoreAndCleanup();
-        this.showToast("Movimento cancelado.", "success", 1800);
+        cancelDrag(true);
       },
       true
     );
   };
 
   TextExpressApp.prototype.handleRootClick = function (event) {
-    /*
-     * Mantém o tratamento normal dos cards e seus botões.
-     * Não existem botões separados para subir ou descer.
-     */
-    return teV13Original.handleRootClick.call(this, event);
+    return teV14Original.handleRootClick.call(this, event);
   };
 
   TextExpressApp.prototype.init = function () {
-    const result = teV13Original.init.call(this);
-    this.setupNativeCardDragDrop();
+    const result = teV14Original.init.call(this);
+    this.setupInstantCardReorder();
     return result;
   };
 

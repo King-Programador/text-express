@@ -1,45 +1,42 @@
-# Text Express 13.0
+# Text Express 14.0
 
-## Arrastar e soltar corrigido
+## Arraste mais rápido e posição de destino visível
 
-A implementação anterior foi removida e refeita sobre a versão estável.
+O arraste nativo do navegador foi removido. Ele causava atraso e mostrava uma imagem fantasma do card.
 
-### Como organizar
+Agora o Text Express usa movimentação direta pelo ponteiro:
 
-Em **Atendimento** ou **Protocolo**:
+- começa a mover após apenas 3 pixels;
+- o card acompanha o mouse imediatamente;
+- não existe imagem fantasma;
+- não há atraso para trocar de posição;
+- um espaço azul do tamanho do card mostra o destino;
+- o espaço exibe “Soltar na posição X”;
+- a lista rola automaticamente perto das bordas;
+- a nova ordem é salva ao soltar;
+- funciona em Atendimento e Protocolo;
+- Esc cancela o movimento.
 
-1. posicione o mouse sobre uma área livre do card;
-2. pressione e segure o botão esquerdo;
-3. arraste o card para cima ou para baixo;
-4. uma linha azul mostra a posição de destino;
-5. solte o botão para salvar.
+Inserir, Editar, Excluir e Favorito continuam funcionando sem iniciar o arraste.
 
-### Correções desta versão
+## Persistência
 
-- removida a pasta que aparecia no lugar da seta;
-- removidos os antigos botões quadrados;
-- seta vertical desenhada diretamente, sem dependência de catálogo;
-- arraste nativo do navegador;
-- o card inteiro pode ser arrastado;
-- Inserir, Editar, Excluir e Favorito não iniciam arraste;
-- rolagem automática perto das bordas;
-- soltar fora da lista cancela o movimento;
-- `Esc` cancela e restaura a ordem anterior;
-- nova ordem salva no navegador;
-- exportação/importação preservam a ordem;
-- sincronização entre abas preserva a ordem;
-- funciona em Atendimento e Protocolo.
+A ordem escolhida:
 
-A organização permanece individual para cada usuário.
+- fica salva no navegador;
+- permanece ao fechar ou desligar o computador;
+- entra na exportação;
+- volta pela importação;
+- sincroniza entre abas abertas no mesmo site.
 
 ## Atualização
 
-Envie para a raiz do GitHub:
+Envie para o GitHub:
 
-- `index.html`
-- `styles.css`
-- `app.js`
-- `bookmarklet.js`
-- `README.md`
+- index.html
+- styles.css
+- app.js
+- bookmarklet.js
+- README.md
 
-Depois aguarde o GitHub Pages e pressione `Ctrl + F5`.
+Depois pressione Ctrl + F5.
