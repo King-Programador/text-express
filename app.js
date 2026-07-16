@@ -1,12 +1,12 @@
 /*
- * Text Express 16.0.0
+ * Text Express 17.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "16.0.0";
+  const APP_VERSION = "17.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -4351,7 +4351,7 @@
 
 
   /* ==========================================================
-   * Text Express 16.0 — movimento direto e rápido
+   * Text Express 17.0 — movimento direto corrigido
    * - Sem janela numérica.
    * - Sem drag-and-drop nativo.
    * - Clone visual leve e placeholder do tamanho real do card.
@@ -4482,6 +4482,7 @@
     let frameId = 0;
     let active = false;
     let suppressNextClick = false;
+    let endingPointerCapture = false;
 
     const EDGE_ZONE = 68;
     const MAX_SCROLL_SPEED = 26;
@@ -4658,8 +4659,8 @@
 
     const releasePointer = () => {
       try {
-        if (handle?.hasPointerCapture(pointerId)) {
-          handle.releasePointerCapture(pointerId);
+        if (list.hasPointerCapture(pointerId)) {
+          list.releasePointerCapture(pointerId);
         }
       } catch {}
     };
@@ -4673,6 +4674,7 @@
       initialOrder = [];
       sourceRect = null;
       active = false;
+      endingPointerCapture = false;
     };
 
     const cancelMovement = (showToast = false) => {
@@ -4681,6 +4683,7 @@
         return;
       }
 
+      endingPointerCapture = true;
       releasePointer();
       clearVisualState();
       restoreInitialOrder();
@@ -4704,6 +4707,7 @@
       const savedScrollTop = list.scrollTop;
       const newPosition = finalOrder.indexOf(movedId) + 1;
 
+      endingPointerCapture = true;
       releasePointer();
       clearVisualState();
 
@@ -4791,7 +4795,7 @@
       ghost = createGhost();
 
       try {
-        handle.setPointerCapture(pointerId);
+        list.setPointerCapture(pointerId);
       } catch {}
 
       requestFrame();
@@ -4838,6 +4842,8 @@
     });
 
     list.addEventListener("lostpointercapture", (event) => {
+      if (endingPointerCapture) return;
+
       if (
         active &&
         pointerId !== null &&

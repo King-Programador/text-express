@@ -1,64 +1,27 @@
-# Text Express 16.0
+# Text Express 17.0
 
-## Movimento direto, rápido e sem janela
+## Movimento para cima e para baixo corrigido
 
-A organização por número foi removida.
+A falha da versão anterior ocorria ao soltar o mouse: o fim da captura do ponteiro era interpretado como cancelamento, e a lista voltava à ordem anterior.
 
-Agora cada card possui uma pequena alça de seta vertical:
+Nesta versão:
 
-1. segure a alça com o botão esquerdo;
-2. mova o mouse para cima ou para baixo;
-3. o card acompanha o ponteiro imediatamente;
-4. o local de destino aparece como um card azul tracejado completo;
-5. a mensagem “Soltar aqui · posição X de Y” mostra a posição exata;
-6. solte para salvar.
-
-### Por que esta versão é mais rápida
-
-- não usa o drag-and-drop nativo do navegador;
-- não abre janela;
-- não pede número;
-- não move o card real para fora da lista;
-- usa uma cópia visual leve;
-- atualiza no ritmo da tela;
-- desativa animações durante o movimento.
-
-### Segurança de uso
-
-O movimento começa apenas pela alça. Assim:
-
-- Inserir continua inserindo;
-- Editar continua editando;
-- Excluir continua excluindo;
-- Favorito continua funcionando;
-- clicar no card não move por acidente.
-
-### Persistência
-
-A ordem:
-
-- fica salva no navegador;
-- permanece após fechar ou desligar o computador;
-- é incluída na exportação;
-- volta pela importação;
-- sincroniza entre abas do mesmo site.
-
-### Categorias
-
-A recuperação automática da versão anterior foi mantida:
-
-- categorias padrão de Atendimento e Protocolo são restauradas;
-- modelos padrão voltam aos tópicos corretos;
-- categorias personalizadas válidas são preservadas.
+- a alça vertical continua iniciando o movimento;
+- o card de destino tracejado permanece visível;
+- o modelo realmente muda de posição ao soltar;
+- a nova ordem é salva no navegador;
+- funciona em Atendimento e Protocolo;
+- as categorias restauradas continuam preservadas;
+- Inserir, Editar, Excluir e Favorito continuam independentes.
 
 ## Atualização
 
 Envie para a raiz do GitHub:
 
-- index.html
-- styles.css
-- app.js
-- bookmarklet.js
-- README.md
+- `index.html`
+- `styles.css`
+- `app.js`
+- `bookmarklet.js`
+- `README.md`
 
-Depois pressione Ctrl + F5.
+Depois pressione `Ctrl + F5`.
