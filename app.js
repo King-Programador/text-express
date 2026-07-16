@@ -1,12 +1,12 @@
 /*
- * Text Express 15.0.0
+ * Text Express 16.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "15.0.0";
+  const APP_VERSION = "16.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -4345,6 +4345,560 @@
       }, 250);
     }
 
+    return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 16.0 — movimento direto e rápido
+   * - Sem janela numérica.
+   * - Sem drag-and-drop nativo.
+   * - Clone visual leve e placeholder do tamanho real do card.
+   * - Atendimento e Protocolo.
+   * ========================================================== */
+  const teV16Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    renderCardWithoutNumericPosition: teV15Original.renderCard,
+    handleRootClick: TextExpressApp.prototype.handleRootClick
+  });
+
+  TextExpressApp.prototype.canDirectlyReorder = function () {
+    return this.activeType === "atendimento" ||
+      this.activeType === "protocolo";
+  };
+
+  TextExpressApp.prototype.getDirectMoveHandle = function () {
+    return `
+      <button
+        class="te-direct-move-handle"
+        type="button"
+        data-te-direct-move-handle
+        title="Segure e mova para qualquer posição"
+        aria-label="Segure e mova este modelo para cima ou para baixo">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="m8 7 4-4 4 4"></path>
+          <path d="M12 3v18"></path>
+          <path d="m8 17 4 4 4-4"></path>
+        </svg>
+      </button>`;
+  };
+
+  TextExpressApp.prototype.renderCard = function (snippet) {
+    /*
+     * Usa a renderização anterior à posição numérica da V15.
+     * Isso remove completamente o número e o popover.
+     */
+    let html = teV16Original.renderCardWithoutNumericPosition.call(
+      this,
+      snippet
+    );
+
+    if (!this.canDirectlyReorder()) return html;
+
+    html = html.replace(
+      /class="te-snippet-card\b/,
+      'class="te-snippet-card te-direct-reorder-card'
+    );
+
+    const handle = this.getDirectMoveHandle();
+    const editPattern =
+      /(<button class="te-icon-action" type="button" data-te-action="edit")/;
+
+    if (editPattern.test(html)) {
+      return html.replace(editPattern, `${handle}$1`);
+    }
+
+    const textEditPattern =
+      /(<button class="te-text-button" type="button" data-te-action="edit")/;
+
+    if (textEditPattern.test(html)) {
+      return html.replace(textEditPattern, `${handle}$1`);
+    }
+
+    return html.replace("</article>", `${handle}</article>`);
+  };
+
+  TextExpressApp.prototype.getDirectVisibleOrder = function () {
+    return [...this.listElement.querySelectorAll(
+      ".te-snippet-card[data-te-card-id]"
+    )]
+      .map((card) => card.dataset.teCardId)
+      .filter(Boolean);
+  };
+
+  TextExpressApp.prototype.persistDirectVisibleOrder = function (
+    orderedVisibleIds
+  ) {
+    if (!this.canDirectlyReorder()) return false;
+
+    const visibleItems = this.getFilteredSnippets();
+    const visibleIdSet = new Set(visibleItems.map((item) => item.id));
+
+    if (
+      orderedVisibleIds.length !== visibleItems.length ||
+      orderedVisibleIds.some((id) => !visibleIdSet.has(id))
+    ) {
+      return false;
+    }
+
+    const visibleSlots = [];
+    const snippetsById = new Map(
+      this.snippets.map((snippet) => [snippet.id, snippet])
+    );
+
+    this.snippets.forEach((snippet, index) => {
+      if (visibleIdSet.has(snippet.id)) visibleSlots.push(index);
+    });
+
+    const reordered = orderedVisibleIds
+      .map((id) => snippetsById.get(id))
+      .filter(Boolean);
+
+    if (visibleSlots.length !== reordered.length) return false;
+
+    visibleSlots.forEach((slot, index) => {
+      this.snippets[slot] = reordered[index];
+    });
+
+    return this.saveSnippets();
+  };
+
+  TextExpressApp.prototype.setupDirectCardReorder = function () {
+    const list = this.listElement;
+    if (!list || list.dataset.teDirectReorderReady === "true") return;
+
+    list.dataset.teDirectReorderReady = "true";
+
+    let pointerId = null;
+    let handle = null;
+    let sourceCard = null;
+    let ghost = null;
+    let startY = 0;
+    let latestY = 0;
+    let initialOrder = [];
+    let initialScrollTop = 0;
+    let sourceRect = null;
+    let frameId = 0;
+    let active = false;
+    let suppressNextClick = false;
+
+    const EDGE_ZONE = 68;
+    const MAX_SCROLL_SPEED = 26;
+
+    const getCardsExceptSource = () => {
+      return [...list.querySelectorAll(
+        ".te-snippet-card[data-te-card-id]:not(.te-direct-placeholder)"
+      )];
+    };
+
+    const calculatePosition = () => {
+      const cards = [
+        ...list.querySelectorAll(
+          ".te-snippet-card[data-te-card-id]"
+        )
+      ];
+
+      const index = cards.indexOf(sourceCard);
+      return index >= 0 ? index + 1 : 1;
+    };
+
+    const updatePlaceholderLabel = () => {
+      if (!sourceCard) return;
+
+      const position = calculatePosition();
+      const total = this.getFilteredSnippets().length;
+
+      sourceCard.dataset.teDropPosition =
+        `Soltar aqui · posição ${position} de ${total}`;
+    };
+
+    const movePlaceholder = (clientY) => {
+      if (!sourceCard) return;
+
+      const candidates = getCardsExceptSource();
+      let destination = null;
+
+      for (const card of candidates) {
+        const rect = card.getBoundingClientRect();
+
+        if (clientY < rect.top + rect.height / 2) {
+          destination = card;
+          break;
+        }
+      }
+
+      if (destination) {
+        if (sourceCard.nextElementSibling !== destination) {
+          list.insertBefore(sourceCard, destination);
+        }
+      } else if (sourceCard !== list.lastElementChild) {
+        list.appendChild(sourceCard);
+      }
+
+      updatePlaceholderLabel();
+    };
+
+    const autoScroll = () => {
+      const rect = list.getBoundingClientRect();
+      let delta = 0;
+
+      if (latestY < rect.top + EDGE_ZONE) {
+        const ratio = Math.max(
+          0,
+          Math.min(1, (rect.top + EDGE_ZONE - latestY) / EDGE_ZONE)
+        );
+        delta = -Math.ceil(5 + ratio * MAX_SCROLL_SPEED);
+      } else if (latestY > rect.bottom - EDGE_ZONE) {
+        const ratio = Math.max(
+          0,
+          Math.min(1, (latestY - (rect.bottom - EDGE_ZONE)) / EDGE_ZONE)
+        );
+        delta = Math.ceil(5 + ratio * MAX_SCROLL_SPEED);
+      }
+
+      if (delta) list.scrollTop += delta;
+    };
+
+    const renderFrame = () => {
+      frameId = 0;
+
+      if (!active || !ghost || !sourceRect) return;
+
+      const deltaY = latestY - startY;
+
+      ghost.style.transform =
+        `translate3d(0, ${Math.round(deltaY)}px, 0)`;
+
+      autoScroll();
+      movePlaceholder(latestY);
+
+      /*
+       * Mantém atualizando enquanto o ponteiro estiver na zona de rolagem.
+       */
+      const rect = list.getBoundingClientRect();
+      const nearEdge =
+        latestY < rect.top + EDGE_ZONE ||
+        latestY > rect.bottom - EDGE_ZONE;
+
+      if (nearEdge) requestFrame();
+    };
+
+    const requestFrame = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(renderFrame);
+    };
+
+    const createGhost = () => {
+      const clone = sourceCard.cloneNode(true);
+
+      clone.classList.remove(
+        "te-selected",
+        "te-direct-placeholder",
+        "te-position-moved"
+      );
+      clone.classList.add("te-direct-drag-ghost");
+      clone.removeAttribute("data-te-drop-position");
+      clone.setAttribute("aria-hidden", "true");
+
+      clone.querySelectorAll("button, input, textarea, select, a")
+        .forEach((element) => {
+          element.tabIndex = -1;
+          element.setAttribute("aria-hidden", "true");
+        });
+
+      clone.style.position = "fixed";
+      clone.style.left = `${Math.round(sourceRect.left)}px`;
+      clone.style.top = `${Math.round(sourceRect.top)}px`;
+      clone.style.width = `${Math.round(sourceRect.width)}px`;
+      clone.style.height = `${Math.round(sourceRect.height)}px`;
+      clone.style.margin = "0";
+      clone.style.zIndex = "2147483646";
+      clone.style.pointerEvents = "none";
+      clone.style.transform = "translate3d(0, 0, 0)";
+      clone.style.willChange = "transform";
+
+      this.root.appendChild(clone);
+      return clone;
+    };
+
+    const clearVisualState = () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+        frameId = 0;
+      }
+
+      ghost?.remove();
+
+      if (sourceCard) {
+        sourceCard.classList.remove("te-direct-placeholder");
+        sourceCard.removeAttribute("data-te-drop-position");
+        sourceCard.setAttribute("aria-grabbed", "false");
+      }
+
+      list.classList.remove("te-direct-reordering");
+
+      ghost = null;
+    };
+
+    const restoreInitialOrder = () => {
+      if (!initialOrder.length) return;
+
+      const cardsById = new Map(
+        [...list.querySelectorAll(
+          ".te-snippet-card[data-te-card-id]"
+        )].map((card) => [card.dataset.teCardId, card])
+      );
+
+      initialOrder.forEach((id) => {
+        const card = cardsById.get(id);
+        if (card) list.appendChild(card);
+      });
+    };
+
+    const releasePointer = () => {
+      try {
+        if (handle?.hasPointerCapture(pointerId)) {
+          handle.releasePointerCapture(pointerId);
+        }
+      } catch {}
+    };
+
+    const resetState = () => {
+      pointerId = null;
+      handle = null;
+      sourceCard = null;
+      startY = 0;
+      latestY = 0;
+      initialOrder = [];
+      sourceRect = null;
+      active = false;
+    };
+
+    const cancelMovement = (showToast = false) => {
+      if (!active) {
+        resetState();
+        return;
+      }
+
+      releasePointer();
+      clearVisualState();
+      restoreInitialOrder();
+      list.scrollTop = initialScrollTop;
+      resetState();
+
+      if (showToast) {
+        this.showToast("Movimento cancelado.", "success", 1500);
+      }
+    };
+
+    const finishMovement = () => {
+      if (!active || !sourceCard) {
+        resetState();
+        return;
+      }
+
+      const movedId = sourceCard.dataset.teCardId;
+      const finalOrder = this.getDirectVisibleOrder();
+      const changed = finalOrder.join("|") !== initialOrder.join("|");
+      const savedScrollTop = list.scrollTop;
+      const newPosition = finalOrder.indexOf(movedId) + 1;
+
+      releasePointer();
+      clearVisualState();
+
+      if (!changed) {
+        resetState();
+        return;
+      }
+
+      const saved = this.persistDirectVisibleOrder(finalOrder);
+
+      if (!saved) {
+        restoreInitialOrder();
+        resetState();
+        this.renderSnippets();
+        this.showToast("Não foi possível salvar a nova ordem.", "error");
+        return;
+      }
+
+      this.selectedId = movedId || this.selectedId;
+      resetState();
+      this.renderSnippets();
+
+      window.requestAnimationFrame(() => {
+        list.scrollTop = savedScrollTop;
+
+        const movedCard = [...list.querySelectorAll("[data-te-card-id]")]
+          .find((card) => card.dataset.teCardId === movedId);
+
+        movedCard?.classList.add("te-direct-move-saved");
+
+        window.setTimeout(() => {
+          movedCard?.classList.remove("te-direct-move-saved");
+        }, 600);
+      });
+
+      suppressNextClick = true;
+      window.setTimeout(() => {
+        suppressNextClick = false;
+      }, 140);
+
+      this.showToast(
+        `Modelo movido para a posição ${newPosition}.`,
+        "success",
+        1800
+      );
+    };
+
+    list.addEventListener("pointerdown", (event) => {
+      const moveHandle = event.target.closest(
+        "[data-te-direct-move-handle]"
+      );
+
+      if (
+        !moveHandle ||
+        !this.canDirectlyReorder() ||
+        (event.pointerType === "mouse" && event.button !== 0)
+      ) {
+        return;
+      }
+
+      const card = moveHandle.closest(
+        ".te-snippet-card[data-te-card-id]"
+      );
+
+      if (!card) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      pointerId = event.pointerId;
+      handle = moveHandle;
+      sourceCard = card;
+      sourceRect = sourceCard.getBoundingClientRect();
+      startY = event.clientY;
+      latestY = event.clientY;
+      initialOrder = this.getDirectVisibleOrder();
+      initialScrollTop = list.scrollTop;
+      active = true;
+
+      sourceCard.classList.add("te-direct-placeholder");
+      sourceCard.setAttribute("aria-grabbed", "true");
+      list.classList.add("te-direct-reordering");
+      updatePlaceholderLabel();
+
+      ghost = createGhost();
+
+      try {
+        handle.setPointerCapture(pointerId);
+      } catch {}
+
+      requestFrame();
+    });
+
+    list.addEventListener("pointermove", (event) => {
+      if (
+        !active ||
+        pointerId === null ||
+        event.pointerId !== pointerId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      latestY = event.clientY;
+      requestFrame();
+    });
+
+    list.addEventListener("pointerup", (event) => {
+      if (
+        !active ||
+        pointerId === null ||
+        event.pointerId !== pointerId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      finishMovement();
+    });
+
+    list.addEventListener("pointercancel", (event) => {
+      if (
+        !active ||
+        pointerId === null ||
+        event.pointerId !== pointerId
+      ) {
+        return;
+      }
+
+      cancelMovement(false);
+    });
+
+    list.addEventListener("lostpointercapture", (event) => {
+      if (
+        active &&
+        pointerId !== null &&
+        event.pointerId === pointerId
+      ) {
+        cancelMovement(false);
+      }
+    });
+
+    list.addEventListener(
+      "click",
+      (event) => {
+        if (!suppressNextClick) return;
+
+        suppressNextClick = false;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true
+    );
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Escape" || !active) return;
+
+        event.preventDefault();
+        cancelMovement(true);
+      },
+      true
+    );
+  };
+
+  TextExpressApp.prototype.handleRootClick = function (event) {
+    /*
+     * A alça não executa clique comum; ela serve apenas ao movimento.
+     */
+    const handle = event.target.closest("[data-te-direct-move-handle]");
+
+    if (handle) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    return teV16Original.handleRootClick.call(this, event);
+  };
+
+  TextExpressApp.prototype.init = function () {
+    const result = teV16Original.init.call(this);
+
+    /*
+     * A V15 criou o popover numérico durante a inicialização.
+     * Ele permanece fechado e é removido visualmente nesta versão.
+     */
+    if (this.positionPopover) {
+      this.positionPopover.classList.add("te-hidden");
+      this.positionPopover.setAttribute("aria-hidden", "true");
+    }
+
+    this.setupDirectCardReorder();
     return result;
   };
 

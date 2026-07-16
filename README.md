@@ -1,45 +1,55 @@
-# Text Express 15.0
+# Text Express 16.0
 
-## Organização por posição numérica
+## Movimento direto, rápido e sem janela
 
-O arraste foi removido.
+A organização por número foi removida.
 
-Agora cada card de Atendimento ou Protocolo possui uma seta vertical discreta com o número da posição atual.
+Agora cada card possui uma pequena alça de seta vertical:
 
-Ao clicar:
+1. segure a alça com o botão esquerdo;
+2. mova o mouse para cima ou para baixo;
+3. o card acompanha o ponteiro imediatamente;
+4. o local de destino aparece como um card azul tracejado completo;
+5. a mensagem “Soltar aqui · posição X de Y” mostra a posição exata;
+6. solte para salvar.
 
-1. aparece uma pequena janela;
-2. digite a posição desejada, como 1, 2, 3 ou 25;
-3. clique em Mover;
-4. a ordem é salva automaticamente.
+### Por que esta versão é mais rápida
 
-A pequena janela informa o total de posições disponíveis e fecha ao clicar fora ou pressionar Esc.
+- não usa o drag-and-drop nativo do navegador;
+- não abre janela;
+- não pede número;
+- não move o card real para fora da lista;
+- usa uma cópia visual leve;
+- atualiza no ritmo da tela;
+- desativa animações durante o movimento.
 
-A posição é calculada dentro da visualização atual:
+### Segurança de uso
 
-- em Todos, organiza toda a aba;
-- dentro de uma categoria, organiza aquele tópico;
-- durante uma busca, organiza os resultados visíveis.
+O movimento começa apenas pela alça. Assim:
 
-## Recuperação de categorias
+- Inserir continua inserindo;
+- Editar continua editando;
+- Excluir continua excluindo;
+- Favorito continua funcionando;
+- clicar no card não move por acidente.
 
-A versão detecta e corrige automaticamente o problema em que:
+### Persistência
 
-- categorias de Atendimento desapareceram;
-- categorias de Protocolo desapareceram;
-- todos os modelos foram concentrados em uma única categoria.
+A ordem:
 
-A correção:
+- fica salva no navegador;
+- permanece após fechar ou desligar o computador;
+- é incluída na exportação;
+- volta pela importação;
+- sincroniza entre abas do mesmo site.
 
-- restaura todas as categorias padrão ausentes;
-- redistribui os modelos padrão para as categorias originais;
-- mantém categorias personalizadas que ainda existirem;
-- não apaga modelos criados pelo usuário;
-- envia apenas modelos personalizados sem categoria válida para “Outros”.
+### Categorias
 
-## Persistência
+A recuperação automática da versão anterior foi mantida:
 
-A ordem e as categorias ficam salvas no navegador, são incluídas na exportação e sincronizadas entre abas abertas no mesmo site.
+- categorias padrão de Atendimento e Protocolo são restauradas;
+- modelos padrão voltam aos tópicos corretos;
+- categorias personalizadas válidas são preservadas.
 
 ## Atualização
 

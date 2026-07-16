@@ -3166,3 +3166,159 @@
     width: min(224px, calc(100vw - 18px));
   }
 }
+
+/* ==========================================================
+   Text Express 16.0 — movimento direto e rápido
+   ========================================================== */
+
+/* Remove completamente a interface numérica da versão anterior. */
+#text-express-app .te-position-button,
+#text-express-app .te-position-popover {
+  display: none !important;
+}
+
+#text-express-app .te-direct-move-handle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--te-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+#text-express-app .te-direct-move-handle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#text-express-app .te-direct-move-handle:hover,
+#text-express-app .te-direct-move-handle:focus-visible {
+  border-color: color-mix(in srgb, var(--te-primary) 58%, var(--te-border));
+  background: var(--te-primary-soft);
+  color: var(--te-primary);
+}
+
+#text-express-app .te-direct-move-handle:active {
+  cursor: grabbing;
+}
+
+#text-express-app .te-card-actions .te-direct-move-handle {
+  order: 2;
+}
+
+#text-express-app .te-card-actions .te-card-insert {
+  order: 1;
+}
+
+#text-express-app .te-card-actions [data-te-action="edit"] {
+  order: 3;
+}
+
+#text-express-app .te-card-actions [data-te-action="delete"] {
+  order: 4;
+}
+
+/*
+ * O próprio card permanece no local de destino com o tamanho completo.
+ * O conteúdo fica oculto e a posição aparece no centro.
+ */
+#text-express-app .te-snippet-card.te-direct-placeholder {
+  min-height: var(--te-placeholder-height, auto);
+  border: 3px dashed var(--te-primary) !important;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--te-primary) 17%, transparent),
+      color-mix(in srgb, var(--te-primary) 6%, var(--te-surface))
+    ) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--te-primary) 25%, transparent),
+    0 7px 20px color-mix(in srgb, var(--te-primary) 12%, transparent) !important;
+  cursor: grabbing;
+  transition: none !important;
+}
+
+#text-express-app .te-snippet-card.te-direct-placeholder > * {
+  visibility: hidden !important;
+}
+
+#text-express-app .te-snippet-card.te-direct-placeholder::after {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  color: var(--te-primary);
+  content: attr(data-te-drop-position);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .01em;
+  text-align: center;
+  visibility: visible;
+  pointer-events: none;
+}
+
+/* Clone visual que acompanha o ponteiro. */
+#text-express-app .te-snippet-card.te-direct-drag-ghost {
+  border-color: var(--te-primary) !important;
+  background: color-mix(
+    in srgb,
+    var(--te-primary-soft) 58%,
+    var(--te-surface)
+  ) !important;
+  box-shadow:
+    0 20px 44px rgba(3, 10, 28, .38),
+    0 0 0 2px color-mix(in srgb, var(--te-primary) 38%, transparent) !important;
+  opacity: .97;
+  cursor: grabbing !important;
+  transition: none !important;
+}
+
+#text-express-app .te-snippet-card.te-direct-drag-ghost button {
+  pointer-events: none !important;
+}
+
+#text-express-app .te-list.te-direct-reordering {
+  cursor: grabbing;
+  scroll-behavior: auto !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#text-express-app .te-list.te-direct-reordering .te-snippet-card {
+  transition: none !important;
+}
+
+#text-express-app .te-direct-move-saved {
+  animation: te-v16-move-saved 600ms ease;
+}
+
+@keyframes te-v16-move-saved {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--te-success) 55%, transparent);
+  }
+  42% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--te-success) 30%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (max-width: 540px) {
+  #text-express-app .te-direct-move-handle {
+    width: 30px;
+    height: 29px;
+  }
+}
