@@ -3322,3 +3322,178 @@
     height: 29px;
   }
 }
+
+/* ==========================================================
+   Text Express 18.0 — importação completa
+   ========================================================== */
+
+#text-express-app .te-import-choice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 10, 28, .68);
+  backdrop-filter: blur(5px);
+}
+
+#text-express-app .te-import-choice-dialog {
+  width: min(560px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--te-border);
+  border-radius: 15px;
+  background: var(--te-surface);
+  color: var(--te-text);
+  box-shadow: 0 28px 80px rgba(3, 10, 28, .52);
+}
+
+#text-express-app .te-import-choice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--te-border);
+}
+
+#text-express-app .te-import-choice-kicker {
+  color: var(--te-primary);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .07em;
+}
+
+#text-express-app .te-import-choice-header h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+#text-express-app .te-import-choice-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--te-muted);
+  font-size: 21px;
+  cursor: pointer;
+}
+
+#text-express-app .te-import-choice-close:hover {
+  background: var(--te-surface-3);
+  color: var(--te-text);
+}
+
+#text-express-app .te-import-choice-summary {
+  display: grid;
+  gap: 3px;
+  padding: 12px 18px;
+  background: var(--te-surface-2);
+}
+
+#text-express-app .te-import-choice-summary strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#text-express-app .te-import-choice-summary span {
+  color: var(--te-muted);
+  font-size: 9.5px;
+}
+
+#text-express-app .te-import-choice-options {
+  display: grid;
+  gap: 9px;
+  padding: 15px 18px 10px;
+}
+
+#text-express-app .te-import-option {
+  display: grid;
+  grid-template-columns: 39px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--te-border);
+  border-radius: 11px;
+  background: var(--te-surface-2);
+  color: var(--te-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+#text-express-app .te-import-option:hover,
+#text-express-app .te-import-option:focus-visible {
+  border-color: color-mix(in srgb, var(--te-primary) 62%, var(--te-border));
+  background: var(--te-primary-soft);
+  outline: 0;
+}
+
+#text-express-app .te-import-option-primary {
+  border-color: color-mix(in srgb, var(--te-primary) 48%, var(--te-border));
+}
+
+#text-express-app .te-import-option-icon {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border-radius: 10px;
+  background: var(--te-surface-3);
+  color: var(--te-primary);
+  font-size: 21px;
+  font-weight: 800;
+}
+
+#text-express-app .te-import-option > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+#text-express-app .te-import-option strong {
+  font-size: 12px;
+}
+
+#text-express-app .te-import-option small {
+  color: var(--te-muted);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+#text-express-app .te-import-option em {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--te-primary);
+  color: #fff;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+#text-express-app .te-import-choice-warning {
+  margin: 0;
+  padding: 5px 18px 15px;
+  color: var(--te-muted);
+  font-size: 8.8px;
+  line-height: 1.4;
+}
+
+@media (max-width: 540px) {
+  #text-express-app .te-import-choice-overlay {
+    padding: 8px;
+  }
+
+  #text-express-app .te-import-choice-dialog {
+    width: calc(100vw - 16px);
+  }
+}

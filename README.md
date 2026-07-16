@@ -1,27 +1,53 @@
-# Text Express 17.0
+# Text Express 19.0
 
-## Movimento para cima e para baixo corrigido
+## Estado visual salvo automaticamente
 
-A falha da versão anterior ocorria ao soltar o mouse: o fim da captura do ponteiro era interpretado como cancelamento, e a lista voltava à ordem anterior.
+Ao fechar, minimizar, atualizar a página ou abrir novamente o Text Express,
+o sistema recupera:
 
-Nesta versão:
+- última aba aberta: Atendimento, Protocolo ou Favoritos;
+- última categoria selecionada em cada aba;
+- posição horizontal da faixa de categorias em cada aba;
+- pesquisa digitada em cada aba;
+- posição vertical da lista de modelos em cada categoria;
+- último card selecionado em cada visualização.
 
-- a alça vertical continua iniciando o movimento;
-- o card de destino tracejado permanece visível;
-- o modelo realmente muda de posição ao soltar;
-- a nova ordem é salva no navegador;
-- funciona em Atendimento e Protocolo;
-- as categorias restauradas continuam preservadas;
-- Inserir, Editar, Excluir e Favorito continuam independentes.
+As posições do painel principal e do pequeno launcher já continuavam salvas
+e permanecem funcionando.
+
+## Ordem das categorias
+
+A ordem definida pelo usuário ao mover categorias já é salva dentro das
+próprias categorias. Nesta versão, além dessa ordem, também é salva a
+posição horizontal da faixa. Assim, ao abrir novamente, a faixa volta ao
+mesmo ponto em que estava.
+
+## Backup completo
+
+Os novos backups passam a incluir `uiState`, com o estado visual da
+interface.
+
+Ao escolher **Restaurar backup completo** em outro navegador, também são
+restaurados:
+
+- aba aberta;
+- categoria ativa;
+- pesquisas;
+- rolagens;
+- card selecionado;
+- posição horizontal das categorias.
+
+Backups antigos continuam compatíveis. Quando não possuem `uiState`, o
+Text Express utiliza a visualização padrão.
 
 ## Atualização
 
 Envie para a raiz do GitHub:
 
-- `index.html`
-- `styles.css`
-- `app.js`
-- `bookmarklet.js`
-- `README.md`
+- index.html
+- styles.css
+- app.js
+- bookmarklet.js
+- README.md
 
-Depois pressione `Ctrl + F5`.
+Depois pressione Ctrl + F5.

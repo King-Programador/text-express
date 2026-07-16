@@ -1,12 +1,12 @@
 /*
- * Text Express 17.0.0
+ * Text Express 19.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "17.0.0";
+  const APP_VERSION = "19.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -14,7 +14,8 @@
     position: "text_express_position",
     launcherPosition: "text_express_launcher_position",
     categories: "text_express_categories",
-    rememberedVariables: "text_express_remembered_variables"
+    rememberedVariables: "text_express_remembered_variables",
+    uiState: "text_express_ui_state"
   });
 
   const DEFAULT_SETTINGS = Object.freeze({
@@ -4905,6 +4906,1240 @@
     }
 
     this.setupDirectCardReorder();
+    return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 18.0 — importação completa confiável
+   * ========================================================== */
+  const teV18Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    exportSnippets: TextExpressApp.prototype.exportSnippets
+  });
+
+  TextExpressApp.prototype.ensureImportChoiceDialog = function () {
+    if (this.importChoiceDialog) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "te-import-choice-overlay te-hidden";
+    overlay.setAttribute("role", "presentation");
+
+    overlay.innerHTML = `
+      <section
+        class="te-import-choice-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="te-import-choice-title">
+        <header class="te-import-choice-header">
+          <div>
+            <span class="te-import-choice-kicker">IMPORTAR BACKUP</span>
+            <h2 id="te-import-choice-title">Como deseja carregar os dados?</h2>
+          </div>
+          <button
+            class="te-import-choice-close"
+            type="button"
+            data-te-import-choice="cancel"
+            aria-label="Fechar">×</button>
+        </header>
+
+        <div class="te-import-choice-summary">
+          <strong class="te-import-file-name"></strong>
+          <span class="te-import-file-details"></span>
+        </div>
+
+        <div class="te-import-choice-options">
+          <button
+            class="te-import-option te-import-option-primary"
+            type="button"
+            data-te-import-choice="replace">
+            <span class="te-import-option-icon">↻</span>
+            <span>
+              <strong>Restaurar backup completo</strong>
+              <small>
+                Deixa este navegador igual ao navegador antigo:
+                modelos, alterações, exclusões, categorias e ordem.
+              </small>
+              <em>Recomendado para trocar de navegador</em>
+            </span>
+          </button>
+
+          <button
+            class="te-import-option"
+            type="button"
+            data-te-import-choice="merge">
+            <span class="te-import-option-icon">＋</span>
+            <span>
+              <strong>Mesclar com os dados atuais</strong>
+              <small>
+                Atualiza modelos com o mesmo ID e acrescenta modelos novos,
+                sem apagar os demais itens atuais.
+              </small>
+            </span>
+          </button>
+        </div>
+
+        <p class="te-import-choice-warning">
+          A restauração completa substituirá os dados existentes neste
+          navegador. O arquivo selecionado não será alterado.
+        </p>
+      </section>`;
+
+    this.root.appendChild(overlay);
+    this.importChoiceDialog = overlay;
+    this.importFileName = overlay.querySelector(".te-import-file-name");
+    this.importFileDetails = overlay.querySelector(".te-import-file-details");
+
+    overlay.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-te-import-choice]");
+
+      if (button) {
+        event.preventDefault();
+        const choice = button.dataset.teImportChoice;
+
+        if (choice === "cancel") {
+          this.finishImportChoice(null);
+        } else {
+          this.finishImportChoice(choice);
+        }
+        return;
+      }
+
+      if (event.target === overlay) {
+        this.finishImportChoice(null);
+      }
+    });
+  };
+
+  TextExpressApp.prototype.requestImportChoice = function (
+    file,
+    parsed,
+    snippetCount,
+    categoryCount
+  ) {
+    this.ensureImportChoiceDialog();
+
+    this.importFileName.textContent = file.name || "Backup do Text Express";
+    this.importFileDetails.textContent =
+      `${snippetCount} modelo(s) · ${categoryCount} categoria(s)` +
+      (parsed.exportedAt
+        ? ` · exportado em ${new Date(parsed.exportedAt).toLocaleString("pt-BR")}`
+        : "");
+
+    this.importChoiceDialog.classList.remove("te-hidden");
+
+    return new Promise((resolve) => {
+      this.importChoiceResolver = resolve;
+    });
+  };
+
+  TextExpressApp.prototype.finishImportChoice = function (choice) {
+    if (!this.importChoiceDialog) return;
+
+    this.importChoiceDialog.classList.add("te-hidden");
+
+    const resolver = this.importChoiceResolver;
+    this.importChoiceResolver = null;
+
+    if (resolver) resolver(choice);
+  };
+
+  TextExpressApp.prototype.validateImportPayload = function (parsed) {
+    const source = Array.isArray(parsed)
+      ? parsed
+      : parsed && Array.isArray(parsed.snippets)
+        ? parsed.snippets
+        : null;
+
+    if (!source) {
+      throw new Error("O arquivo não contém uma lista válida de modelos.");
+    }
+
+    if (!source.length) {
+      throw new Error("O backup não contém modelos para importar.");
+    }
+
+    const categories =
+      parsed && Array.isArray(parsed.categories)
+        ? parsed.categories
+        : [];
+
+    return {
+      source,
+      categories,
+      fullBackup: Boolean(
+        parsed &&
+        !Array.isArray(parsed) &&
+        parsed.app === "Text Express" &&
+        Array.isArray(parsed.snippets)
+      )
+    };
+  };
+
+  TextExpressApp.prototype.normalizeImportedCategories = function (
+    rawCategories
+  ) {
+    const seen = new Set();
+    const normalized = [];
+
+    for (const raw of rawCategories || []) {
+      const category = this.normalizeCategory(raw);
+
+      if (seen.has(category.id)) continue;
+      seen.add(category.id);
+      normalized.push(category);
+    }
+
+    for (const tipo of ["atendimento", "protocolo"]) {
+      if (!normalized.some((category) => category.tipo === tipo)) {
+        const fallback =
+          DEFAULT_CATEGORIES.find(
+            (category) =>
+              category.tipo === tipo &&
+              this.normalizeSearchText(category.nome) === "outros"
+          ) ||
+          {
+            tipo,
+            nome: "Outros",
+            icone: "folder",
+            cor: "#64748b",
+            ordem: 999,
+            padrao: true
+          };
+
+        const category = this.normalizeCategory(fallback);
+
+        if (!seen.has(category.id)) {
+          seen.add(category.id);
+          normalized.push(category);
+        }
+      }
+    }
+
+    normalized.sort(
+      (a, b) =>
+        a.tipo.localeCompare(b.tipo) ||
+        a.ordem - b.ordem ||
+        a.nome.localeCompare(b.nome, "pt-BR")
+    );
+
+    return normalized;
+  };
+
+  TextExpressApp.prototype.restoreCompleteBackup = function (
+    parsed,
+    source,
+    rawCategories
+  ) {
+    const previousCategories = this.categories;
+    const previousSnippets = this.snippets;
+
+    try {
+      if (rawCategories.length) {
+        this.categories = this.normalizeImportedCategories(rawCategories);
+      } else {
+        this.categories = this.getDefaultCategories();
+      }
+
+      const normalizedSnippets = this.normalizeCollection(source);
+
+      if (!normalizedSnippets.length) {
+        throw new Error("Nenhum modelo válido foi encontrado no backup.");
+      }
+
+      /*
+       * A ordem do array do backup é preservada.
+       * Exclusões feitas no navegador antigo também são preservadas,
+       * pois a base atual é substituída integralmente.
+       */
+      this.snippets = normalizedSnippets;
+
+      const categoriesSaved = this.storageSet(
+        STORAGE_KEYS.categories,
+        JSON.stringify({
+          app: "Text Express",
+          schemaVersion: 6,
+          appVersion: APP_VERSION,
+          updatedAt: new Date().toISOString(),
+          categories: this.categories
+        })
+      );
+
+      const snippetsSaved = this.saveSnippets();
+
+      if (!categoriesSaved || snippetsSaved === false) {
+        throw new Error(
+          "O navegador não confirmou a gravação dos dados importados."
+        );
+      }
+
+      if (
+        parsed.settings &&
+        typeof parsed.settings === "object" &&
+        !Array.isArray(parsed.settings)
+      ) {
+        this.settings = {
+          ...this.settings,
+          ...parsed.settings
+        };
+        this.saveSettings();
+      }
+
+      if (
+        parsed.rememberedVariables &&
+        typeof parsed.rememberedVariables === "object" &&
+        !Array.isArray(parsed.rememberedVariables)
+      ) {
+        this.rememberedVariables = {
+          ...parsed.rememberedVariables
+        };
+        this.saveRememberedVariables?.();
+      }
+
+      this.activeCategory = "Todos";
+      this.selectedId = null;
+      this.searchInput.value = "";
+      this.render();
+
+      return {
+        models: this.snippets.length,
+        categories: this.categories.length
+      };
+    } catch (error) {
+      this.categories = previousCategories;
+      this.snippets = previousSnippets;
+      this.rebuildShortcutMap();
+      throw error;
+    }
+  };
+
+  TextExpressApp.prototype.mergeImportedBackup = function (
+    parsed,
+    source,
+    rawCategories
+  ) {
+    let categoriesCreated = 0;
+    let categoriesUpdated = 0;
+
+    for (const rawCategory of rawCategories) {
+      const candidate = this.normalizeCategory(rawCategory);
+
+      const existingIndex = this.categories.findIndex(
+        (category) =>
+          category.id === candidate.id ||
+          (
+            category.tipo === candidate.tipo &&
+            this.normalizeSearchText(category.nome) ===
+              this.normalizeSearchText(candidate.nome)
+          )
+      );
+
+      if (existingIndex >= 0) {
+        const existing = this.categories[existingIndex];
+
+        this.categories[existingIndex] = {
+          ...existing,
+          ...candidate,
+          id: existing.id
+        };
+        categoriesUpdated += 1;
+      } else {
+        this.categories.push(candidate);
+        categoriesCreated += 1;
+      }
+    }
+
+    this.sortCategories();
+    this.saveCategories();
+
+    const existingById = new Map(
+      this.snippets.map((item, index) => [item.id, index])
+    );
+    const usedShortcuts = new Set(
+      this.snippets.map((item) => item.atalho)
+    );
+    const existingSignatures = new Set(
+      this.snippets.map((item) => this.snippetSignature(item))
+    );
+
+    let updated = 0;
+    let added = 0;
+    let skipped = 0;
+    let renamed = 0;
+
+    for (const raw of source) {
+      const item = this.normalizeSnippet(raw);
+
+      if (!item.nome || !item.conteudo) {
+        skipped += 1;
+        continue;
+      }
+
+      const existingIndex = existingById.get(item.id);
+
+      /*
+       * Mesmo ID significa o mesmo modelo.
+       * A versão importada substitui a versão atual, preservando
+       * alterações de conteúdo, nome, atalho, favorito e categoria.
+       */
+      if (Number.isInteger(existingIndex)) {
+        const previous = this.snippets[existingIndex];
+        usedShortcuts.delete(previous.atalho);
+
+        const originalShortcut = item.atalho;
+        item.atalho = this.makeUniqueShortcut(
+          item.atalho,
+          usedShortcuts
+        );
+
+        if (item.atalho !== originalShortcut) renamed += 1;
+
+        this.snippets[existingIndex] = item;
+        usedShortcuts.add(item.atalho);
+        existingSignatures.add(this.snippetSignature(item));
+        updated += 1;
+        continue;
+      }
+
+      const signature = this.snippetSignature(item);
+
+      if (existingSignatures.has(signature)) {
+        skipped += 1;
+        continue;
+      }
+
+      const originalShortcut = item.atalho;
+      item.atalho = this.makeUniqueShortcut(item.atalho, usedShortcuts);
+
+      if (item.atalho !== originalShortcut) renamed += 1;
+
+      this.snippets.push(item);
+      existingById.set(item.id, this.snippets.length - 1);
+      usedShortcuts.add(item.atalho);
+      existingSignatures.add(signature);
+      added += 1;
+    }
+
+    const saved = this.saveSnippets();
+
+    if (saved === false) {
+      throw new Error("O navegador não confirmou a gravação da mesclagem.");
+    }
+
+    this.activeCategory = "Todos";
+    this.selectedId = null;
+    this.searchInput.value = "";
+    this.render();
+
+    return {
+      updated,
+      added,
+      skipped,
+      renamed,
+      categoriesCreated,
+      categoriesUpdated
+    };
+  };
+
+  TextExpressApp.prototype.handleImportFile = async function (event) {
+    const file = event.target.files && event.target.files[0];
+
+    if (!file) return;
+
+    if (file.size > 12 * 1024 * 1024) {
+      this.showToast(
+        "O arquivo excede o limite de 12 MB.",
+        "error"
+      );
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(await file.text());
+      const validated = this.validateImportPayload(parsed);
+
+      let choice = "merge";
+
+      if (validated.fullBackup) {
+        choice = await this.requestImportChoice(
+          file,
+          parsed,
+          validated.source.length,
+          validated.categories.length
+        );
+
+        if (!choice) {
+          this.showToast("Importação cancelada.");
+          return;
+        }
+      }
+
+      if (choice === "replace") {
+        const result = this.restoreCompleteBackup(
+          parsed,
+          validated.source,
+          validated.categories
+        );
+
+        this.showToast(
+          `Backup restaurado: ${result.models} modelo(s) e ` +
+          `${result.categories} categoria(s).`,
+          "success",
+          6000
+        );
+      } else {
+        const result = this.mergeImportedBackup(
+          parsed,
+          validated.source,
+          validated.categories
+        );
+
+        this.showToast(
+          `${result.updated} atualizado(s), ` +
+          `${result.added} adicionado(s) e ` +
+          `${result.skipped} ignorado(s).`,
+          "success",
+          6000
+        );
+      }
+    } catch (error) {
+      this.showToast(
+        `Não foi possível importar: ${error.message}`,
+        "error",
+        6500
+      );
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  TextExpressApp.prototype.exportSnippets = function () {
+    const payload = {
+      app: "Text Express",
+      backupType: "complete",
+      schemaVersion: 6,
+      appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      total: this.snippets.length,
+      categories: this.categories,
+      snippets: this.snippets,
+      settings: this.settings,
+      rememberedVariables: this.rememberedVariables || {}
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(payload, null, 2)],
+      { type: "application/json;charset=utf-8" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download = `text-express-backup-completo-${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    this.showToast(
+      "Backup completo exportado com modelos, categorias e configurações.",
+      "success",
+      4500
+    );
+  };
+
+  TextExpressApp.prototype.init = function () {
+    const result = teV18Original.init.call(this);
+    this.ensureImportChoiceDialog();
+    return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 19.0 — estado visual persistente
+   *
+   * Guarda:
+   * - última aba;
+   * - categoria selecionada por aba;
+   * - pesquisa de cada aba;
+   * - posição horizontal das categorias;
+   * - posição vertical das listas;
+   * - card selecionado em cada visualização.
+   * ========================================================== */
+  const teV19Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    handleRootClick: TextExpressApp.prototype.handleRootClick,
+    renderCategories: TextExpressApp.prototype.renderCategories,
+    renderSnippets: TextExpressApp.prototype.renderSnippets,
+    openApp: TextExpressApp.prototype.openApp,
+    collapseToLauncher: TextExpressApp.prototype.collapseToLauncher,
+    exportSnippets: TextExpressApp.prototype.exportSnippets,
+    restoreCompleteBackup: TextExpressApp.prototype.restoreCompleteBackup
+  });
+
+  TextExpressApp.prototype.getDefaultUiState = function () {
+    return {
+      version: 1,
+      activeType: "atendimento",
+      activeCategoryByType: {
+        atendimento: "Todos",
+        protocolo: "Todos",
+        favoritos: "Todos"
+      },
+      searchByType: {
+        atendimento: "",
+        protocolo: "",
+        favoritos: ""
+      },
+      categoryScrollPositions: {
+        atendimento: 0,
+        protocolo: 0,
+        favoritos: 0
+      },
+      listScrollPositions: {},
+      selectedIdByView: {},
+      updatedAt: ""
+    };
+  };
+
+  TextExpressApp.prototype.normalizeUiType = function (value) {
+    return ["atendimento", "protocolo", "favoritos"].includes(value)
+      ? value
+      : "atendimento";
+  };
+
+  TextExpressApp.prototype.normalizeStoredUiState = function (raw) {
+    const defaults = this.getDefaultUiState();
+    const source =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? raw
+        : {};
+
+    const normalized = {
+      ...defaults,
+      activeType: this.normalizeUiType(source.activeType),
+      activeCategoryByType: {
+        ...defaults.activeCategoryByType
+      },
+      searchByType: {
+        ...defaults.searchByType
+      },
+      categoryScrollPositions: {
+        ...defaults.categoryScrollPositions
+      },
+      listScrollPositions: {},
+      selectedIdByView: {},
+      updatedAt: typeof source.updatedAt === "string"
+        ? source.updatedAt
+        : ""
+    };
+
+    for (const type of ["atendimento", "protocolo", "favoritos"]) {
+      const category = source.activeCategoryByType?.[type];
+      normalized.activeCategoryByType[type] =
+        typeof category === "string" && category
+          ? category
+          : "Todos";
+
+      const search = source.searchByType?.[type];
+      normalized.searchByType[type] =
+        typeof search === "string"
+          ? search.slice(0, 500)
+          : "";
+
+      const categoryScroll =
+        Number(source.categoryScrollPositions?.[type]);
+
+      normalized.categoryScrollPositions[type] =
+        Number.isFinite(categoryScroll)
+          ? Math.max(0, categoryScroll)
+          : 0;
+    }
+
+    if (
+      source.listScrollPositions &&
+      typeof source.listScrollPositions === "object" &&
+      !Array.isArray(source.listScrollPositions)
+    ) {
+      for (const [key, value] of Object.entries(
+        source.listScrollPositions
+      )) {
+        const number = Number(value);
+
+        if (
+          typeof key === "string" &&
+          key.length <= 700 &&
+          Number.isFinite(number)
+        ) {
+          normalized.listScrollPositions[key] = Math.max(0, number);
+        }
+      }
+    }
+
+    if (
+      source.selectedIdByView &&
+      typeof source.selectedIdByView === "object" &&
+      !Array.isArray(source.selectedIdByView)
+    ) {
+      for (const [key, value] of Object.entries(
+        source.selectedIdByView
+      )) {
+        if (
+          typeof key === "string" &&
+          key.length <= 700 &&
+          typeof value === "string" &&
+          value.length <= 300
+        ) {
+          normalized.selectedIdByView[key] = value;
+        }
+      }
+    }
+
+    return normalized;
+  };
+
+  TextExpressApp.prototype.loadUiState = function () {
+    const saved = this.storageGet(STORAGE_KEYS.uiState);
+
+    if (!saved) {
+      this.uiState = this.getDefaultUiState();
+      return;
+    }
+
+    try {
+      this.uiState = this.normalizeStoredUiState(
+        JSON.parse(saved)
+      );
+    } catch {
+      this.uiState = this.getDefaultUiState();
+    }
+  };
+
+  TextExpressApp.prototype.saveUiState = function () {
+    if (!this.uiState) return false;
+
+    this.uiState.updatedAt = new Date().toISOString();
+
+    return this.storageSet(
+      STORAGE_KEYS.uiState,
+      JSON.stringify(this.uiState)
+    );
+  };
+
+  TextExpressApp.prototype.scheduleUiStateSave = function () {
+    window.clearTimeout(this.uiStateSaveTimer);
+
+    this.uiStateSaveTimer = window.setTimeout(() => {
+      this.captureCurrentUiState();
+      this.saveUiState();
+    }, 120);
+  };
+
+  TextExpressApp.prototype.getUiViewKey = function (
+    type = this.activeType,
+    category = this.activeCategory
+  ) {
+    const safeType = this.normalizeUiType(type);
+    const safeCategory =
+      typeof category === "string" && category
+        ? category
+        : "Todos";
+
+    return `${safeType}::${safeCategory}`;
+  };
+
+  TextExpressApp.prototype.captureCurrentUiState = function () {
+    if (!this.uiState) {
+      this.uiState = this.getDefaultUiState();
+    }
+
+    const type = this.normalizeUiType(this.activeType);
+    const category =
+      typeof this.activeCategory === "string" &&
+      this.activeCategory
+        ? this.activeCategory
+        : "Todos";
+    const viewKey = this.getUiViewKey(type, category);
+
+    this.uiState.activeType = type;
+    this.uiState.activeCategoryByType[type] = category;
+    this.uiState.searchByType[type] =
+      String(this.searchInput?.value || "").slice(0, 500);
+
+    if (this.categoryBar) {
+      const categoryScroll = Math.max(
+        0,
+        Number(this.categoryBar.scrollLeft) || 0
+      );
+
+      this.uiState.categoryScrollPositions[type] =
+        categoryScroll;
+
+      if (this.categoryScrollPositions) {
+        this.categoryScrollPositions[type] = categoryScroll;
+      }
+    }
+
+    if (this.listElement) {
+      this.uiState.listScrollPositions[viewKey] =
+        Math.max(
+          0,
+          Number(this.listElement.scrollTop) || 0
+        );
+    }
+
+    if (
+      typeof this.selectedId === "string" &&
+      this.selectedId
+    ) {
+      this.uiState.selectedIdByView[viewKey] =
+        this.selectedId;
+    } else {
+      delete this.uiState.selectedIdByView[viewKey];
+    }
+
+    return this.uiState;
+  };
+
+  TextExpressApp.prototype.isUiCategoryValid = function (
+    type,
+    categoryId
+  ) {
+    if (categoryId === "Todos") return true;
+
+    if (type === "favoritos") {
+      return this.getCategoriesForType("favoritos")
+        .some((category) => category.id === categoryId);
+    }
+
+    return this.categories.some(
+      (category) =>
+        category.tipo === type &&
+        category.id === categoryId
+    );
+  };
+
+  TextExpressApp.prototype.applyUiStateToCurrentView = function () {
+    if (!this.uiState) {
+      this.uiState = this.getDefaultUiState();
+    }
+
+    const type = this.normalizeUiType(
+      this.uiState.activeType
+    );
+    const requestedCategory =
+      this.uiState.activeCategoryByType[type] || "Todos";
+    const category = this.isUiCategoryValid(
+      type,
+      requestedCategory
+    )
+      ? requestedCategory
+      : "Todos";
+
+    this.activeType = type;
+    this.activeCategory = category;
+
+    if (this.searchInput) {
+      this.searchInput.value =
+        this.uiState.searchByType[type] || "";
+    }
+
+    if (!this.categoryScrollPositions) {
+      this.categoryScrollPositions = {
+        atendimento: 0,
+        protocolo: 0,
+        favoritos: 0
+      };
+    }
+
+    this.categoryScrollPositions = {
+      ...this.categoryScrollPositions,
+      ...this.uiState.categoryScrollPositions
+    };
+
+    const viewKey = this.getUiViewKey(type, category);
+    const selectedId =
+      this.uiState.selectedIdByView[viewKey];
+
+    this.selectedId =
+      typeof selectedId === "string" &&
+      this.snippets.some(
+        (snippet) => snippet.id === selectedId
+      )
+        ? selectedId
+        : null;
+  };
+
+  TextExpressApp.prototype.restoreCurrentUiPositions = function () {
+    if (!this.uiState) return;
+
+    const type = this.normalizeUiType(this.activeType);
+    const viewKey = this.getUiViewKey(
+      type,
+      this.activeCategory
+    );
+
+    window.requestAnimationFrame(() => {
+      if (this.categoryBar) {
+        const maximum = Math.max(
+          0,
+          this.categoryBar.scrollWidth -
+            this.categoryBar.clientWidth
+        );
+        const requested = Math.max(
+          0,
+          Number(
+            this.uiState.categoryScrollPositions[type]
+          ) || 0
+        );
+
+        this.categoryBar.scrollLeft =
+          Math.min(requested, maximum);
+
+        if (this.categoryScrollPositions) {
+          this.categoryScrollPositions[type] =
+            this.categoryBar.scrollLeft;
+        }
+      }
+
+      if (this.listElement) {
+        const maximum = Math.max(
+          0,
+          this.listElement.scrollHeight -
+            this.listElement.clientHeight
+        );
+        const requested = Math.max(
+          0,
+          Number(
+            this.uiState.listScrollPositions[viewKey]
+          ) || 0
+        );
+
+        this.listElement.scrollTop =
+          Math.min(requested, maximum);
+      }
+    });
+  };
+
+  TextExpressApp.prototype.switchToSavedUiType = function (
+    nextType
+  ) {
+    this.captureCurrentUiState();
+
+    const type = this.normalizeUiType(nextType);
+    const requestedCategory =
+      this.uiState.activeCategoryByType[type] || "Todos";
+
+    this.activeType = type;
+    this.activeCategory = this.isUiCategoryValid(
+      type,
+      requestedCategory
+    )
+      ? requestedCategory
+      : "Todos";
+    this.selectedId =
+      this.uiState.selectedIdByView[
+        this.getUiViewKey(type, this.activeCategory)
+      ] || null;
+    this.searchInput.value =
+      this.uiState.searchByType[type] || "";
+
+    this.uiState.activeType = type;
+
+    this.render();
+    this.restoreCurrentUiPositions();
+    this.scheduleUiStateSave();
+  };
+
+  TextExpressApp.prototype.selectPersistentCategory = function (
+    categoryId
+  ) {
+    this.captureCurrentUiState();
+
+    const type = this.normalizeUiType(this.activeType);
+    const category = this.isUiCategoryValid(
+      type,
+      categoryId
+    )
+      ? categoryId
+      : "Todos";
+
+    this.activeCategory = category;
+    this.uiState.activeCategoryByType[type] = category;
+
+    const viewKey = this.getUiViewKey(type, category);
+    this.selectedId =
+      this.uiState.selectedIdByView[viewKey] || null;
+
+    this.renderCategories();
+    this.renderSnippets();
+    this.restoreCurrentUiPositions();
+    this.scheduleUiStateSave();
+  };
+
+  TextExpressApp.prototype.setupUiStatePersistence = function () {
+    if (this.uiStatePersistenceReady) return;
+    this.uiStatePersistenceReady = true;
+
+    this.searchInput?.addEventListener(
+      "input",
+      () => {
+        const type = this.normalizeUiType(
+          this.activeType
+        );
+
+        this.uiState.searchByType[type] =
+          String(this.searchInput.value || "")
+            .slice(0, 500);
+
+        const viewKey = this.getUiViewKey();
+        this.uiState.listScrollPositions[viewKey] = 0;
+        this.scheduleUiStateSave();
+      },
+      true
+    );
+
+    this.categoryBar?.addEventListener(
+      "scroll",
+      () => {
+        const type = this.normalizeUiType(
+          this.activeType
+        );
+        const value = Math.max(
+          0,
+          Number(this.categoryBar.scrollLeft) || 0
+        );
+
+        this.uiState.categoryScrollPositions[type] =
+          value;
+
+        if (this.categoryScrollPositions) {
+          this.categoryScrollPositions[type] = value;
+        }
+
+        this.scheduleUiStateSave();
+      },
+      { passive: true }
+    );
+
+    this.listElement?.addEventListener(
+      "scroll",
+      () => {
+        const viewKey = this.getUiViewKey();
+
+        this.uiState.listScrollPositions[viewKey] =
+          Math.max(
+            0,
+            Number(this.listElement.scrollTop) || 0
+          );
+
+        this.scheduleUiStateSave();
+      },
+      { passive: true }
+    );
+
+    window.addEventListener("pagehide", () => {
+      this.captureCurrentUiState();
+      this.saveUiState();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      this.captureCurrentUiState();
+      this.saveUiState();
+    });
+  };
+
+  TextExpressApp.prototype.handleRootClick = function (event) {
+    const typeButton = event.target.closest("[data-te-type]");
+
+    if (typeButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.switchToSavedUiType(
+        typeButton.dataset.teType
+      );
+      return;
+    }
+
+    const categoryButton = event.target.closest(
+      "#te-category-bar [data-te-category]"
+    );
+
+    if (categoryButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.selectPersistentCategory(
+        categoryButton.dataset.teCategory || "Todos"
+      );
+      return;
+    }
+
+    const card = event.target.closest(
+      "[data-te-card-id]"
+    );
+
+    const result =
+      teV19Original.handleRootClick.call(this, event);
+
+    if (
+      card &&
+      !event.target.closest("[data-te-action]")
+    ) {
+      const viewKey = this.getUiViewKey();
+
+      this.uiState.selectedIdByView[viewKey] =
+        card.dataset.teCardId;
+      this.scheduleUiStateSave();
+    }
+
+    return result;
+  };
+
+  TextExpressApp.prototype.renderCategories = function () {
+    const result =
+      teV19Original.renderCategories.call(this);
+
+    this.restoreCurrentUiPositions();
+
+    return result;
+  };
+
+  TextExpressApp.prototype.renderSnippets = function () {
+    const viewKey = this.getUiViewKey();
+    const savedSelected =
+      this.uiState?.selectedIdByView?.[viewKey];
+
+    if (
+      typeof savedSelected === "string" &&
+      this.snippets.some(
+        (snippet) => snippet.id === savedSelected
+      )
+    ) {
+      this.selectedId = savedSelected;
+    }
+
+    const result =
+      teV19Original.renderSnippets.call(this);
+
+    if (this.selectedId) {
+      this.uiState.selectedIdByView[viewKey] =
+        this.selectedId;
+    }
+
+    this.restoreCurrentUiPositions();
+
+    return result;
+  };
+
+  TextExpressApp.prototype.openApp = function () {
+    const result = teV19Original.openApp.call(this);
+
+    this.restoreCurrentUiPositions();
+
+    return result;
+  };
+
+  TextExpressApp.prototype.collapseToLauncher = function () {
+    this.captureCurrentUiState();
+    this.saveUiState();
+
+    return teV19Original.collapseToLauncher.call(this);
+  };
+
+  TextExpressApp.prototype.restoreCompleteBackup = function (
+    parsed,
+    source,
+    rawCategories
+  ) {
+    const result =
+      teV19Original.restoreCompleteBackup.call(
+        this,
+        parsed,
+        source,
+        rawCategories
+      );
+
+    if (
+      parsed?.uiState &&
+      typeof parsed.uiState === "object" &&
+      !Array.isArray(parsed.uiState)
+    ) {
+      this.uiState = this.normalizeStoredUiState(
+        parsed.uiState
+      );
+      this.saveUiState();
+      this.applyUiStateToCurrentView();
+      this.render();
+      this.restoreCurrentUiPositions();
+    }
+
+    return result;
+  };
+
+  TextExpressApp.prototype.exportSnippets = function () {
+    const uiState = this.captureCurrentUiState();
+    this.saveUiState();
+
+    const payload = {
+      app: "Text Express",
+      backupType: "complete",
+      schemaVersion: 7,
+      appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      total: this.snippets.length,
+      categories: this.categories,
+      snippets: this.snippets,
+      settings: this.settings,
+      rememberedVariables:
+        this.rememberedVariables || {},
+      uiState
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(payload, null, 2)],
+      { type: "application/json;charset=utf-8" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download =
+      `text-express-backup-completo-${date}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    this.showToast(
+      "Backup completo exportado com dados e posições da interface.",
+      "success",
+      4500
+    );
+  };
+
+  TextExpressApp.prototype.init = function () {
+    this.uiState = this.getDefaultUiState();
+    this.uiStateSaveTimer = null;
+    this.uiStatePersistenceReady = false;
+
+    const result = teV19Original.init.call(this);
+
+    this.loadUiState();
+    this.applyUiStateToCurrentView();
+    this.setupUiStatePersistence();
+    this.render();
+    this.restoreCurrentUiPositions();
+
     return result;
   };
 
