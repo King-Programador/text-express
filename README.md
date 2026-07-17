@@ -1,42 +1,41 @@
-# Text Express 23.0 — Base sanitizada
+# Text Express 24.0 — Janelas móveis e redimensionáveis
 
-Esta versão continua a partir do Text Express 22.0 e preserva o sistema de sequências numeradas.
+Esta versão continua a base sanitizada da versão 23.0 e preserva os cartões, categorias, sequências, protocolos e atalhos já existentes.
 
-## Base incluída
+## Novos controles das janelas
 
-- 21 categorias;
-- 132 cartões/modelos;
-- 29 sequências de Atendimento;
-- 97 falas internas nas sequências;
-- categorias e cartões mantidos na mesma organização do backup enviado.
+### Menu de sequência
 
-## Dados removidos
+- clique com o botão direito no cabeçalho e arraste para mover o menu para qualquer ponto da tela;
+- arraste qualquer borda para aumentar ou diminuir a largura ou a altura;
+- arraste os cantos para alterar largura e altura simultaneamente;
+- posição e tamanho ficam salvos no navegador;
+- o menu continua aberto ao inserir uma pergunta e fecha com `ESC` ou `X`.
 
-Não foram incorporados ao projeto:
+### Painel principal
 
-- nome lembrado do atendente;
-- preferências pessoais;
-- tema claro/escuro anteriormente escolhido;
-- posição da janela e do botão;
-- filtros, pesquisas, rolagem e seleção anterior;
-- datas e revisões particulares do backup.
+- continua podendo ser arrastado pelo cabeçalho com o botão esquerdo;
+- também pode ser arrastado pelo cabeçalho com o botão direito;
+- todas as bordas e cantos permitem redimensionamento;
+- posição e tamanho ficam salvos no navegador;
+- as alças de redimensionamento são desativadas durante o modo de tela cheia.
 
-Os campos `origem` foram generalizados para não expor nomes pessoais.
-
-## Migração automática
-
-No primeiro carregamento da versão 23.0, a base local antiga é substituída pela base limpa incluída no projeto. A migração ocorre uma única vez. Depois, novos cartões, edições e preferências voltam a ser salvos normalmente no navegador.
-
-## Sequências
-
-Na área Atendimento, o comando principal de um cartão do tipo sequência abre o menu com suas falas internas. Exemplo:
+## Sequências numeradas
 
 1. digite o comando principal, como `/oi`;
 2. o comando é removido do chat;
 3. o menu da sequência aparece;
-4. digite o número da fala, use o atalho interno ou clique no item;
+4. escolha a fala por número, palavra-chave ou clique;
 5. somente o texto é inserido, sem o número;
-6. o menu continua aberto até `ESC` ou `X`.
+6. o menu permanece aberto.
+
+## Base preservada
+
+- 21 categorias;
+- 132 cartões/modelos;
+- 29 sequências de Atendimento;
+- 97 falas internas;
+- separação entre Atendimento e Protocolo.
 
 ## Publicação no GitHub
 

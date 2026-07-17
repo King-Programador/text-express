@@ -3913,3 +3913,136 @@
     font-size: 21px;
   }
 }
+
+/* ==========================================================
+   Text Express 24.0 — janelas móveis e redimensionáveis
+   ========================================================== */
+#text-express-app .te-resizable-window {
+  min-width: 0;
+  min-height: 0;
+}
+
+#text-express-app .te-panel.te-window-moving,
+#text-express-app .te-panel.te-window-resizing,
+#text-express-app .te-sequence-menu.te-window-moving,
+#text-express-app .te-sequence-menu.te-window-resizing {
+  user-select: none;
+  transition: none !important;
+}
+
+#text-express-app .te-right-drag-handle {
+  cursor: move;
+}
+
+#text-express-app .te-sequence-menu-header.te-right-drag-handle {
+  user-select: none;
+  touch-action: none;
+}
+
+#text-express-app .te-resize-handle {
+  position: absolute;
+  z-index: 80;
+  display: block;
+  background: transparent;
+  touch-action: none;
+}
+
+#text-express-app .te-resize-n,
+#text-express-app .te-resize-s {
+  left: 14px;
+  right: 14px;
+  height: 9px;
+  cursor: ns-resize;
+}
+
+#text-express-app .te-resize-n { top: 0; }
+#text-express-app .te-resize-s { bottom: 0; }
+
+#text-express-app .te-resize-e,
+#text-express-app .te-resize-w {
+  top: 14px;
+  bottom: 14px;
+  width: 9px;
+  cursor: ew-resize;
+}
+
+#text-express-app .te-resize-e { right: 0; }
+#text-express-app .te-resize-w { left: 0; }
+
+#text-express-app .te-resize-ne,
+#text-express-app .te-resize-nw,
+#text-express-app .te-resize-se,
+#text-express-app .te-resize-sw {
+  width: 16px;
+  height: 16px;
+}
+
+#text-express-app .te-resize-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+#text-express-app .te-resize-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+#text-express-app .te-resize-se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+
+#text-express-app .te-resize-sw {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+}
+
+#text-express-app .te-resize-se::after,
+#text-express-app .te-resize-sw::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  opacity: .42;
+  border-bottom: 2px solid currentColor;
+}
+
+#text-express-app .te-resize-se::after {
+  right: 4px;
+  border-right: 2px solid currentColor;
+  color: var(--te-muted);
+}
+
+#text-express-app .te-resize-sw::after {
+  left: 4px;
+  border-left: 2px solid currentColor;
+  color: var(--te-muted);
+}
+
+#text-express-app .te-sequence-menu .te-resize-se::after,
+#text-express-app .te-sequence-menu .te-resize-sw::after {
+  color: #a78bfa;
+}
+
+#text-express-app .te-panel.te-fullscreen > .te-resize-handle,
+#text-express-app .te-panel.te-minimized > .te-resize-handle {
+  display: none;
+}
+
+#text-express-app .te-sequence-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (max-width: 680px) {
+  #text-express-app .te-panel.te-resizable-window,
+  #text-express-app .te-sequence-menu.te-resizable-window {
+    min-width: 0;
+    min-height: 0;
+  }
+}

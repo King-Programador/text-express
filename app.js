@@ -1,12 +1,12 @@
 /*
- * Text Express 23.0.0
+ * Text Express 24.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "23.0.0";
+  const APP_VERSION = "24.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -15,7 +15,9 @@
     launcherPosition: "text_express_launcher_position",
     categories: "text_express_categories",
     rememberedVariables: "text_express_remembered_variables",
-    uiState: "text_express_ui_state"
+    uiState: "text_express_ui_state",
+    panelGeometry: "text_express_panel_geometry_v24",
+    sequenceGeometry: "text_express_sequence_geometry_v24"
   });
 
   const DEFAULT_SETTINGS = Object.freeze({
@@ -7720,6 +7722,332 @@
       });
     }
 
+    return result;
+  };
+
+
+
+  /* ==========================================================
+   * Text Express 24.0 — janelas móveis e redimensionáveis
+   * - menu de sequência: botão direito no cabeçalho para mover;
+   * - painel principal: mantém o arraste atual e aceita botão direito;
+   * - ambos podem ser redimensionados pelas bordas e cantos;
+   * - posição e tamanho ficam salvos no navegador.
+   * ========================================================== */
+  const teV24Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    ensureSequenceMenu: TextExpressApp.prototype.ensureSequenceMenu,
+    onDragEnd: TextExpressApp.prototype.onDragEnd
+  });
+
+  TextExpressApp.prototype.getManagedWindowConfig = function (scope) {
+    if (scope === "sequence") {
+      return {
+        storageKey: STORAGE_KEYS.sequenceGeometry,
+        minWidth: 330,
+        minHeight: 250,
+        margin: 8
+      };
+    }
+    return {
+      storageKey: STORAGE_KEYS.panelGeometry,
+      minWidth: 520,
+      minHeight: 430,
+      margin: 8
+    };
+  };
+
+  TextExpressApp.prototype.addResizeHandles = function (target, scope) {
+    if (!target || target.dataset.teResizableReady === "true") return;
+    target.dataset.teResizableReady = "true";
+    target.classList.add("te-resizable-window");
+    target.dataset.teManagedWindow = scope;
+
+    for (const edge of ["n", "ne", "e", "se", "s", "sw", "w", "nw"]) {
+      const handle = document.createElement("span");
+      handle.className = `te-resize-handle te-resize-${edge}`;
+      handle.dataset.teResizeEdge = edge;
+      handle.setAttribute("aria-hidden", "true");
+      handle.title = "Arraste para redimensionar";
+      target.appendChild(handle);
+    }
+
+    target.addEventListener("pointerdown", (event) => {
+      const handle = event.target.closest?.("[data-te-resize-edge]");
+      if (!handle || handle.parentElement !== target) return;
+      this.startManagedResize(target, scope, handle.dataset.teResizeEdge, event);
+    }, true);
+  };
+
+  TextExpressApp.prototype.startManagedResize = function (target, scope, edge, event) {
+    if (event.button !== 0 || !target || !edge) return;
+    if (scope === "panel" && (target.classList.contains("te-fullscreen") || target.classList.contains("te-hidden"))) return;
+
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    target.style.left = `${rect.left}px`;
+    target.style.top = `${rect.top}px`;
+    target.style.right = "auto";
+    target.style.bottom = "auto";
+    target.style.width = `${rect.width}px`;
+    target.style.height = `${rect.height}px`;
+    target.style.maxWidth = "none";
+    target.style.maxHeight = "none";
+
+    this.managedResizeState = {
+      target,
+      scope,
+      edge,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom
+    };
+
+    target.classList.add("te-window-resizing");
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent) => this.moveManagedResize(moveEvent);
+    const end = (endEvent) => {
+      if (!this.managedResizeState || endEvent.pointerId !== this.managedResizeState.pointerId) return;
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", end, true);
+      document.removeEventListener("pointercancel", end, true);
+      const state = this.managedResizeState;
+      this.managedResizeState = null;
+      state.target.classList.remove("te-window-resizing");
+      this.saveManagedGeometry(state.target, state.scope);
+    };
+
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", end, true);
+    document.addEventListener("pointercancel", end, true);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  TextExpressApp.prototype.moveManagedResize = function (event) {
+    const state = this.managedResizeState;
+    if (!state || event.pointerId !== state.pointerId) return;
+
+    const config = this.getManagedWindowConfig(state.scope);
+    const margin = config.margin;
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const minWidth = Math.min(config.minWidth, Math.max(180, viewportWidth - margin * 2));
+    const minHeight = Math.min(config.minHeight, Math.max(160, viewportHeight - margin * 2));
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+
+    let left = state.left;
+    let right = state.right;
+    let top = state.top;
+    let bottom = state.bottom;
+
+    if (state.edge.includes("w")) {
+      left = Math.min(Math.max(margin, state.left + dx), right - minWidth);
+    }
+    if (state.edge.includes("e")) {
+      right = Math.max(Math.min(viewportWidth - margin, state.right + dx), left + minWidth);
+    }
+    if (state.edge.includes("n")) {
+      top = Math.min(Math.max(margin, state.top + dy), bottom - minHeight);
+    }
+    if (state.edge.includes("s")) {
+      bottom = Math.max(Math.min(viewportHeight - margin, state.bottom + dy), top + minHeight);
+    }
+
+    state.target.style.left = `${Math.round(left)}px`;
+    state.target.style.top = `${Math.round(top)}px`;
+    state.target.style.width = `${Math.round(right - left)}px`;
+    state.target.style.height = `${Math.round(bottom - top)}px`;
+    event.preventDefault();
+  };
+
+  TextExpressApp.prototype.startManagedDrag = function (target, scope, event) {
+    if (!target || event.button !== 2) return;
+    if (event.target.closest?.("button, input, textarea, select, a, [data-te-resize-edge]")) return;
+    if (scope === "panel" && (target.classList.contains("te-fullscreen") || target.classList.contains("te-hidden"))) return;
+
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    target.style.left = `${rect.left}px`;
+    target.style.top = `${rect.top}px`;
+    target.style.right = "auto";
+    target.style.bottom = "auto";
+    target.style.width = `${rect.width}px`;
+    target.style.height = `${rect.height}px`;
+    target.style.maxWidth = "none";
+    target.style.maxHeight = "none";
+
+    this.managedDragState = {
+      target,
+      scope,
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top
+    };
+
+    target.classList.add("te-window-moving");
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent) => {
+      const state = this.managedDragState;
+      if (!state || moveEvent.pointerId !== state.pointerId) return;
+      const currentRect = state.target.getBoundingClientRect();
+      const margin = this.getManagedWindowConfig(state.scope).margin;
+      const maxLeft = Math.max(margin, window.innerWidth - currentRect.width - margin);
+      const maxTop = Math.max(margin, window.innerHeight - currentRect.height - margin);
+      const left = Math.min(Math.max(margin, moveEvent.clientX - state.offsetX), maxLeft);
+      const top = Math.min(Math.max(margin, moveEvent.clientY - state.offsetY), maxTop);
+      state.target.style.left = `${Math.round(left)}px`;
+      state.target.style.top = `${Math.round(top)}px`;
+      moveEvent.preventDefault();
+    };
+
+    const end = (endEvent) => {
+      if (!this.managedDragState || endEvent.pointerId !== this.managedDragState.pointerId) return;
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", end, true);
+      document.removeEventListener("pointercancel", end, true);
+      const state = this.managedDragState;
+      this.managedDragState = null;
+      state.target.classList.remove("te-window-moving");
+      this.saveManagedGeometry(state.target, state.scope);
+    };
+
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", end, true);
+    document.addEventListener("pointercancel", end, true);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  TextExpressApp.prototype.saveManagedGeometry = function (target, scope) {
+    if (!target || target.classList.contains("te-hidden")) return;
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const geometry = {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    };
+    this.storageSet(this.getManagedWindowConfig(scope).storageKey, JSON.stringify(geometry));
+    if (scope === "panel") {
+      this.storageSet(STORAGE_KEYS.position, JSON.stringify({ left: geometry.left, top: geometry.top }));
+    }
+  };
+
+  TextExpressApp.prototype.restoreManagedGeometry = function (target, scope) {
+    if (!target) return false;
+    const saved = this.storageGet(this.getManagedWindowConfig(scope).storageKey);
+    if (!saved) return false;
+
+    try {
+      const geometry = JSON.parse(saved);
+      if (![geometry.left, geometry.top, geometry.width, geometry.height].every(Number.isFinite)) return false;
+      const config = this.getManagedWindowConfig(scope);
+      const maxWidth = Math.max(180, window.innerWidth - config.margin * 2);
+      const maxHeight = Math.max(160, window.innerHeight - config.margin * 2);
+      const minWidth = Math.min(config.minWidth, maxWidth);
+      const minHeight = Math.min(config.minHeight, maxHeight);
+      const width = Math.min(Math.max(minWidth, geometry.width), maxWidth);
+      const height = Math.min(Math.max(minHeight, geometry.height), maxHeight);
+      const left = Math.min(Math.max(config.margin, geometry.left), Math.max(config.margin, window.innerWidth - width - config.margin));
+      const top = Math.min(Math.max(config.margin, geometry.top), Math.max(config.margin, window.innerHeight - height - config.margin));
+
+      target.style.left = `${Math.round(left)}px`;
+      target.style.top = `${Math.round(top)}px`;
+      target.style.right = "auto";
+      target.style.bottom = "auto";
+      target.style.width = `${Math.round(width)}px`;
+      target.style.height = `${Math.round(height)}px`;
+      target.style.maxWidth = "none";
+      target.style.maxHeight = "none";
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  TextExpressApp.prototype.constrainManagedWindow = function (target, scope) {
+    if (!target || target.classList.contains("te-hidden")) return;
+    if (!target.style.left && !target.style.top && !target.style.width && !target.style.height) return;
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const config = this.getManagedWindowConfig(scope);
+    const maxWidth = Math.max(180, window.innerWidth - config.margin * 2);
+    const maxHeight = Math.max(160, window.innerHeight - config.margin * 2);
+    const width = Math.min(rect.width, maxWidth);
+    const height = Math.min(rect.height, maxHeight);
+    const left = Math.min(Math.max(config.margin, rect.left), Math.max(config.margin, window.innerWidth - width - config.margin));
+    const top = Math.min(Math.max(config.margin, rect.top), Math.max(config.margin, window.innerHeight - height - config.margin));
+    target.style.left = `${Math.round(left)}px`;
+    target.style.top = `${Math.round(top)}px`;
+    target.style.right = "auto";
+    target.style.bottom = "auto";
+    target.style.width = `${Math.round(width)}px`;
+    target.style.height = `${Math.round(height)}px`;
+    target.style.maxWidth = "none";
+    target.style.maxHeight = "none";
+  };
+
+  TextExpressApp.prototype.setupManagedWindow = function (target, scope, dragHandle) {
+    if (!target) return;
+    this.addResizeHandles(target, scope);
+    if (target.dataset.teManagedInteractions !== "true") {
+      target.dataset.teManagedInteractions = "true";
+      if (dragHandle) {
+        dragHandle.classList.add("te-right-drag-handle");
+        dragHandle.title = scope === "sequence"
+          ? "Clique com o botão direito e arraste para mover a sequência"
+          : "Arraste para mover. Também funciona com o botão direito";
+        dragHandle.addEventListener("contextmenu", (event) => {
+          if (event.target.closest?.("button, input, textarea, select, a")) return;
+          event.preventDefault();
+        });
+        dragHandle.addEventListener("pointerdown", (event) => {
+          if (event.button === 2) this.startManagedDrag(target, scope, event);
+        }, true);
+      }
+    }
+    this.restoreManagedGeometry(target, scope);
+  };
+
+  TextExpressApp.prototype.ensureSequenceMenu = function () {
+    const menu = teV24Original.ensureSequenceMenu.call(this);
+    this.setupManagedWindow(menu, "sequence", menu?.querySelector(".te-sequence-menu-header"));
+    return menu;
+  };
+
+  TextExpressApp.prototype.onDragEnd = function (event) {
+    const wasDragging = Boolean(this.dragState && event.pointerId === this.dragState.pointerId);
+    const result = teV24Original.onDragEnd.call(this, event);
+    if (wasDragging) this.saveManagedGeometry(this.panel, "panel");
+    return result;
+  };
+
+  TextExpressApp.prototype.init = function () {
+    this.managedDragState = null;
+    this.managedResizeState = null;
+    const result = teV24Original.init.call(this);
+    this.setupManagedWindow(this.panel, "panel", this.root.querySelector("[data-te-drag-handle]"));
+    this.ensureSequenceMenu();
+    this.root.dataset.version = APP_VERSION;
+
+    if (!this.managedWindowResizeListener) {
+      this.managedWindowResizeListener = () => {
+        this.constrainManagedWindow(this.panel, "panel");
+        this.constrainManagedWindow(this.sequenceMenu, "sequence");
+      };
+      window.addEventListener("resize", this.managedWindowResizeListener);
+    }
     return result;
   };
 
