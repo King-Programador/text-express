@@ -1,12 +1,12 @@
 /*
- * Text Express 25.0.0
+ * Text Express 26.0.0
  * Expansor de textos para atendimento e registro de protocolos.
  * Sem dependências externas.
  */
 (() => {
   "use strict";
 
-  const APP_VERSION = "25.0.0";
+  const APP_VERSION = "26.0.0";
   const STORAGE_KEYS = Object.freeze({
     snippets: "text_express_snippets",
     darkMode: "te_dark_mode",
@@ -5487,7 +5487,7 @@
   TextExpressApp.prototype.getDefaultUiState = function () {
     return {
       version: 1,
-      activeType: "atendimento",
+      activeType: "protocolo",
       activeCategoryByType: {
         atendimento: "Todos",
         protocolo: "Todos",
@@ -8066,6 +8066,204 @@
       };
       window.addEventListener("resize", this.managedWindowResizeListener);
     }
+    return result;
+  };
+
+
+  /* ==========================================================
+   * Text Express 26.0 — fluxo de Atendimento e abertura em Protocolo
+   * - novas ativações começam na área Protocolo;
+   * - ABRIR SEQUÊNCIA recolhe o painel principal para o ícone;
+   * - o ícone flutuante restaura o painel sem fechar a sequência;
+   * - ao restaurar ou mover janelas, a sequência evita sobreposição;
+   * - a cópia de uma fala exibe confirmação curta e discreta.
+   * ========================================================== */
+  const teV26Original = Object.freeze({
+    init: TextExpressApp.prototype.init,
+    openApp: TextExpressApp.prototype.openApp,
+    handleRootClick: TextExpressApp.prototype.handleRootClick,
+    insertSequenceStep: TextExpressApp.prototype.insertSequenceStep,
+    saveManagedGeometry: TextExpressApp.prototype.saveManagedGeometry
+  });
+
+  TextExpressApp.prototype.rectanglesOverlap = function (first, second, gap = 0) {
+    if (!first || !second) return false;
+    return !(
+      first.right + gap <= second.left ||
+      first.left >= second.right + gap ||
+      first.bottom + gap <= second.top ||
+      first.top >= second.bottom + gap
+    );
+  };
+
+  TextExpressApp.prototype.avoidPanelSequenceOverlap = function () {
+    if (this.teAvoidingWindowOverlap) return false;
+    if (!this.panel || !this.sequenceMenu) return false;
+    if (this.panel.classList.contains("te-hidden") || this.sequenceMenu.classList.contains("te-hidden")) return false;
+    if (this.panel.classList.contains("te-fullscreen")) return false;
+
+    const panelRect = this.panel.getBoundingClientRect();
+    const sequenceRect = this.sequenceMenu.getBoundingClientRect();
+    if (!panelRect.width || !panelRect.height || !sequenceRect.width || !sequenceRect.height) return false;
+    if (!this.rectanglesOverlap(panelRect, sequenceRect, 10)) return false;
+
+    const config = this.getManagedWindowConfig("sequence");
+    const margin = Math.max(8, config.margin || 8);
+    const gap = 12;
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const minWidth = Math.min(config.minWidth, Math.max(180, viewportWidth - margin * 2));
+    const minHeight = Math.min(config.minHeight, Math.max(160, viewportHeight - margin * 2));
+
+    const clamp = (value, minimum, maximum) => Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+    const candidates = [];
+    const addCandidate = (side, left, top, availableWidth, availableHeight) => {
+      if (availableWidth < minWidth || availableHeight < minHeight) return;
+      const width = Math.min(sequenceRect.width, availableWidth);
+      const height = Math.min(sequenceRect.height, availableHeight);
+      let nextLeft = left;
+      let nextTop = top;
+
+      if (side === "left" || side === "right") {
+        nextTop = clamp(sequenceRect.top, margin, viewportHeight - height - margin);
+      } else {
+        nextLeft = clamp(sequenceRect.left, margin, viewportWidth - width - margin);
+      }
+
+      const movement = Math.hypot(nextLeft - sequenceRect.left, nextTop - sequenceRect.top);
+      const retainedArea = width * height;
+      candidates.push({ left: nextLeft, top: nextTop, width, height, score: retainedArea - movement * 30 });
+    };
+
+    addCandidate(
+      "left",
+      margin,
+      sequenceRect.top,
+      Math.max(0, panelRect.left - gap - margin),
+      viewportHeight - margin * 2
+    );
+    addCandidate(
+      "right",
+      panelRect.right + gap,
+      sequenceRect.top,
+      Math.max(0, viewportWidth - panelRect.right - gap - margin),
+      viewportHeight - margin * 2
+    );
+    addCandidate(
+      "top",
+      sequenceRect.left,
+      margin,
+      viewportWidth - margin * 2,
+      Math.max(0, panelRect.top - gap - margin)
+    );
+    addCandidate(
+      "bottom",
+      sequenceRect.left,
+      panelRect.bottom + gap,
+      viewportWidth - margin * 2,
+      Math.max(0, viewportHeight - panelRect.bottom - gap - margin)
+    );
+
+    if (!candidates.length) return false;
+    candidates.sort((first, second) => second.score - first.score);
+    const best = candidates[0];
+
+    this.teAvoidingWindowOverlap = true;
+    this.sequenceMenu.style.left = `${Math.round(best.left)}px`;
+    this.sequenceMenu.style.top = `${Math.round(best.top)}px`;
+    this.sequenceMenu.style.right = "auto";
+    this.sequenceMenu.style.bottom = "auto";
+    this.sequenceMenu.style.width = `${Math.round(best.width)}px`;
+    this.sequenceMenu.style.height = `${Math.round(best.height)}px`;
+    this.sequenceMenu.style.maxWidth = "none";
+    this.sequenceMenu.style.maxHeight = "none";
+    teV26Original.saveManagedGeometry.call(this, this.sequenceMenu, "sequence");
+    this.teAvoidingWindowOverlap = false;
+    return true;
+  };
+
+  TextExpressApp.prototype.openApp = function () {
+    const result = teV26Original.openApp.call(this);
+    if (this.isSequenceMenuOpen?.()) {
+      window.requestAnimationFrame(() => this.avoidPanelSequenceOverlap());
+    }
+    return result;
+  };
+
+  TextExpressApp.prototype.handleRootClick = function (event) {
+    const action = event.target.closest?.("[data-te-action]")?.dataset.teAction;
+    const opensSequence = action === "sequence-open" || action === "flow-open";
+    const result = teV26Original.handleRootClick.call(this, event);
+
+    if (opensSequence && this.isSequenceMenuOpen?.()) {
+      this.collapseToLauncher();
+      window.requestAnimationFrame(() => this.constrainManagedWindow(this.sequenceMenu, "sequence"));
+    }
+    return result;
+  };
+
+  TextExpressApp.prototype.insertSequenceStep = async function (flowId, stepIndex, suppliedContext = null) {
+    const flow = this.snippets.find((item) =>
+      item.id === flowId && item.tipo === "atendimento" && item.modelo === "fluxo"
+    );
+    const step = flow?.etapas?.[stepIndex];
+    if (!flow || !step) return false;
+
+    const context = suppliedContext || this.captureInsertionContext(this.lastActiveElement, 0);
+    const content = await this.processFlowStep(flow, step);
+    if (content === null) {
+      this.showToast("Inserção cancelada.");
+      return false;
+    }
+
+    let inserted = false;
+    if (context) inserted = this.applyInsertionContext(context, content);
+    if (!inserted) {
+      await this.copyText(content);
+      this.showToast("Texto copiado.", "success", 1800);
+    } else {
+      this.showToast(`Pergunta ${stepIndex + 1} inserida.`, "success");
+    }
+
+    const state = this.getFlowState(flow);
+    state.current = stepIndex;
+    state.used.add(stepIndex);
+    if (this.selectedId === flow.id) this.renderDetail(flow);
+    if (this.activeSequenceId === flow.id) this.renderSequenceMenu();
+    return inserted;
+  };
+
+  TextExpressApp.prototype.saveManagedGeometry = function (target, scope) {
+    const result = teV26Original.saveManagedGeometry.call(this, target, scope);
+    if (!this.teAvoidingWindowOverlap && this.isSequenceMenuOpen?.() && !this.panel?.classList.contains("te-hidden")) {
+      window.requestAnimationFrame(() => this.avoidPanelSequenceOverlap());
+    }
+    return result;
+  };
+
+  TextExpressApp.prototype.init = function () {
+    this.teAvoidingWindowOverlap = false;
+    const result = teV26Original.init.call(this);
+
+    /* Cada nova página/guia começa diretamente em Protocolo. */
+    if (!this.uiState) this.uiState = this.getDefaultUiState();
+    this.uiState.activeType = "protocolo";
+    this.activeType = "protocolo";
+    this.lastShortcutType = "protocolo";
+
+    const requestedCategory = this.uiState.activeCategoryByType?.protocolo || "Todos";
+    this.activeCategory = this.isUiCategoryValid?.("protocolo", requestedCategory)
+      ? requestedCategory
+      : "Todos";
+    this.selectedId = this.uiState.selectedIdByView?.[
+      this.getUiViewKey?.("protocolo", this.activeCategory) || `protocolo::${this.activeCategory}`
+    ] || null;
+    if (this.searchInput) this.searchInput.value = this.uiState.searchByType?.protocolo || "";
+
+    this.render();
+    this.restoreCurrentUiPositions?.();
+    this.saveUiState?.();
+    this.root.dataset.version = APP_VERSION;
     return result;
   };
 

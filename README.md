@@ -1,49 +1,51 @@
-# Text Express 25.0 — Arraste do menu de sequência corrigido
+# Text Express 26.0 — Protocolo padrão e sequência otimizada
 
-Esta versão continua a base sanitizada e preserva os cartões, categorias, sequências, protocolos, atalhos e redimensionamento já validados.
+Esta versão continua a base estável da versão 25.0. Todos os cartões, categorias, sequências, protocolos, atalhos, importação, mesclagem, salvamento local, tema e redimensionamento foram preservados.
 
-## Correção principal
+## Novidades da versão 26.0
 
-O menu de sequência agora pode ser movido pela faixa superior do cabeçalho de duas formas:
+### Protocolo como área inicial
 
-- segure o botão esquerdo e arraste;
-- ou segure o botão direito e arraste.
+Cada nova ativação do Text Express em uma página ou guia começa diretamente em **Protocolo**. Depois de aberto, ainda é possível alternar normalmente para Atendimento ou Favoritos.
 
-O navegador não abre o menu de contexto durante o movimento com o botão direito. O botão `X`, os campos de busca e os cartões continuam funcionando normalmente e não iniciam o arraste.
+### Abertura das sequências no Atendimento
 
-## Janelas móveis e redimensionáveis
+Ao clicar em **ABRIR SEQUÊNCIA**:
 
-### Menu de sequência
+- o painel principal é recolhido automaticamente para o ícone flutuante;
+- o menu da sequência permanece aberto;
+- o painel principal pode ser restaurado clicando no mesmo ícone flutuante;
+- restaurar o painel não fecha a sequência;
+- os dois menus podem permanecer abertos ao mesmo tempo.
 
-- arraste o cabeçalho para qualquer ponto visível da tela;
-- arraste qualquer borda para alterar largura ou altura;
-- arraste os cantos para alterar largura e altura ao mesmo tempo;
-- posição e tamanho ficam salvos no navegador;
-- o menu continua aberto após inserir uma pergunta e fecha com `ESC` ou `X`.
+### Prevenção de sobreposição
 
-### Painel principal
+Quando o painel principal é restaurado com uma sequência aberta, o Text Express verifica se as duas janelas estão sobrepostas. Se necessário, reposiciona e, dentro dos limites mínimos, ajusta o menu da sequência para manter as duas áreas visíveis.
 
-- continua podendo ser arrastado pelo cabeçalho;
-- também aceita movimento com o botão direito;
-- bordas e cantos permitem redimensionamento;
-- posição e tamanho ficam salvos no navegador.
+A posição e o tamanho continuam salvos no navegador.
 
-## Sequências numeradas
+### Confirmação discreta de cópia
 
-1. Digite o comando principal, como `/oi`.
-2. O comando é removido do chat.
-3. O menu da sequência aparece.
-4. Escolha a fala por número, palavra-chave ou clique.
-5. Somente o texto é inserido, sem o número.
-6. O menu permanece aberto.
+Quando o chat não permite inserção automática e uma fala precisa ser copiada, aparece a confirmação curta:
 
-## Base preservada
+**Texto copiado.**
+
+O menu da sequência continua aberto após a cópia.
+
+## Recursos preservados
 
 - 21 categorias;
 - 132 cartões/modelos;
 - 29 sequências de Atendimento;
 - 97 falas internas;
-- separação entre Atendimento e Protocolo.
+- Atendimento e Protocolo separados;
+- atalhos pesquisados somente na área selecionada;
+- arraste do menu de sequência com botão esquerdo ou direito;
+- redimensionamento pelas bordas e cantos;
+- fechamento da sequência com `ESC` ou `X`;
+- importação completa e mesclagem;
+- modo claro e escuro;
+- salvamento automático e compatibilidade com dados existentes.
 
 ## Publicação no GitHub
 
@@ -54,5 +56,7 @@ Envie estes cinco arquivos para a raiz do repositório:
 - `app.js`
 - `bookmarklet.js`
 - `README.md`
+
+Repositório: `https://github.com/King-Programador/text-express`
 
 GitHub Pages: `https://king-programador.github.io/text-express/`
